@@ -266,3 +266,35 @@ html, body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
 }
+
+/* Responsive Landing Page Layout Utilities */
+@media (max-width: 1024px) {
+  .hero-responsive-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2.5rem !important;
+  }
+  .benefits-grid, .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .features-grid, .security-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .steps-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .footer-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .hidden-mobile {
+    display: none !important;
+  }
+  .show-mobile-flex {
+    display: flex !important;
+  }
+  .benefits-grid, .stats-grid, .features-grid, .security-grid, .steps-grid, .footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
