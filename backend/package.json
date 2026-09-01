@@ -1,0 +1,13 @@
+{
+  "name": "payflow-hr-backend",
+  "version": "1.0.0",
+  "description": "PayFlow HR Backend Database, Supabase Migrations & API Services",
+  "main": "supabase/seed.sql",
+  "scripts": {
+    "db:migrate": "echo 'Run SQL contents of supabase/migrations/01_schema_and_rls.sql in Supabase SQL Editor'",
+    "db:seed": "echo 'Run SQL contents of supabase/seed.sql in Supabase SQL Editor'"
+  },
+  "keywords": ["payflow-hr", "supabase", "postgresql", "backend"],
+  "author": "PayFlow HR Technologies Inc.",
+  "license": "MIT"
+}
