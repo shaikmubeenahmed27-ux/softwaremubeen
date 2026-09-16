@@ -4,6 +4,7 @@ import { NAV_ITEMS } from '../../config/navigation';
 import {
   LayoutDashboard,
   Users,
+  User,
   Building2,
   Briefcase,
   Clock,
@@ -24,6 +25,7 @@ import {
 const ICON_MAP = {
   LayoutDashboard,
   Users,
+  User,
   Building2,
   Briefcase,
   Clock,

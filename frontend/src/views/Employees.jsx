@@ -29,14 +29,18 @@ import {
   MoreVertical
 } from 'lucide-react';
 
+import { useAuth } from '../context/AuthContext';
+
 export const EmployeesView = () => {
+  const { currentRole, currentUser } = useAuth();
+
   // State
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search, Filter, Sort, Pagination
   const [search, setSearch] = useState('');
-  const [deptFilter, setDeptFilter] = useState('All');
+  const [deptFilter, setDeptFilter] = useState(currentRole === 'manager' ? currentUser.department : 'All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [sortBy, setSortBy] = useState('name');
@@ -57,9 +61,10 @@ export const EmployeesView = () => {
 
   const loadData = async () => {
     setLoading(true);
+    const activeDept = currentRole === 'manager' ? currentUser.department : deptFilter;
     const res = await getEmployees({
       search,
-      department: deptFilter,
+      department: activeDept,
       status: statusFilter,
       employmentType: typeFilter,
       sortBy,
@@ -75,7 +80,7 @@ export const EmployeesView = () => {
 
   useEffect(() => {
     loadData();
-  }, [search, deptFilter, statusFilter, typeFilter, sortBy, sortOrder, page]);
+  }, [search, deptFilter, statusFilter, typeFilter, sortBy, sortOrder, page, currentRole]);
 
   const handleSortToggle = (field) => {
     if (sortBy === field) {
@@ -111,20 +116,27 @@ export const EmployeesView = () => {
       <div className="page-header">
         <div className="page-title-group">
           <h1>
-            <Users size={24} style={{ color: 'var(--primary-400)' }} /> Employee Management Directory
+            <Users size={24} style={{ color: 'var(--primary-400)' }} />{' '}
+            {currentRole === 'manager' ? `${currentUser.department} Team Members` : 'Employee Directory'}
           </h1>
-          <p>Full employee lifecycle directory with multi-filtering, 7-tab profile views, and soft-deactivation.</p>
+          <p>
+            {currentRole === 'manager'
+              ? `View basic information of employees in the ${currentUser.department} department.`
+              : 'Add, edit, view, activate/deactivate employees and assign departments or designations.'}
+          </p>
         </div>
         <div className="page-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              setEditingEmployee(null);
-              setIsFormModalOpen(true);
-            }}
-          >
-            <Plus size={16} /> Onboard New Employee
-          </button>
+          {currentRole === 'admin' && (
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setEditingEmployee(null);
+                setIsFormModalOpen(true);
+              }}
+            >
+              <Plus size={16} /> Onboard New Employee
+            </button>
+          )}
         </div>
       </div>
 
@@ -309,10 +321,10 @@ export const EmployeesView = () => {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                        {/* View 7-Tab Profile */}
+                        {/* View Profile / Details */}
                         <button
                           className="btn-icon"
-                          title="View Employee Profile (7 Tabs)"
+                          title="View Employee Profile"
                           onClick={() => {
                             setSelectedProfileEmployee(emp);
                             setIsProfileOpen(true);
@@ -321,30 +333,33 @@ export const EmployeesView = () => {
                           <Eye size={16} style={{ color: 'var(--primary-400)' }} />
                         </button>
 
-                        {/* Edit Profile */}
-                        <button
-                          className="btn-icon"
-                          title="Edit Profile"
-                          onClick={() => {
-                            setEditingEmployee(emp);
-                            setIsFormModalOpen(true);
-                          }}
-                        >
-                          <Edit2 size={16} style={{ color: 'var(--text-main)' }} />
-                        </button>
+                        {/* Admin-only: Edit Profile & Deactivate */}
+                        {currentRole === 'admin' && (
+                          <>
+                            <button
+                              className="btn-icon"
+                              title="Edit Profile"
+                              onClick={() => {
+                                setEditingEmployee(emp);
+                                setIsFormModalOpen(true);
+                              }}
+                            >
+                              <Edit2 size={16} style={{ color: 'var(--text-main)' }} />
+                            </button>
 
-                        {/* Soft Deactivate */}
-                        {emp.status !== 'inactive' && (
-                          <button
-                            className="btn-icon"
-                            title="Deactivate Account (Soft Delete)"
-                            onClick={() => {
-                              setEmployeeToDeactivate(emp);
-                              setIsDeactivateModalOpen(true);
-                            }}
-                          >
-                            <UserX size={16} style={{ color: '#ef4444' }} />
-                          </button>
+                            {emp.status !== 'inactive' && (
+                              <button
+                                className="btn-icon"
+                                title="Deactivate Account (Soft Delete)"
+                                onClick={() => {
+                                  setEmployeeToDeactivate(emp);
+                                  setIsDeactivateModalOpen(true);
+                                }}
+                              >
+                                <UserX size={16} style={{ color: '#ef4444' }} />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

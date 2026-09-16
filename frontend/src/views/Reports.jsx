@@ -26,8 +26,8 @@ import {
 export const ReportsView = () => {
   const { currentRole, currentUser } = useAuth();
 
-  // Active Report Category: 'employee', 'attendance', 'leave', 'payroll', 'department', 'overtime'
-  const [reportType, setReportType] = useState('employee');
+  // Active Report Category
+  const [reportType, setReportType] = useState(currentRole === 'admin' ? 'payroll' : 'attendance');
 
   // Filters
   const [month, setMonth] = useState('August 2026');
@@ -91,16 +91,21 @@ export const ReportsView = () => {
         </div>
       </div>
 
-      {/* 6 Category Report Switcher Tabs */}
+      {/* Category Report Switcher Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', background: 'var(--bg-surface)', padding: '0.4rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
-        {[
-          { id: 'employee', label: '1. Employee Report', icon: Users },
-          { id: 'attendance', label: '2. Attendance Report', icon: Clock },
-          { id: 'leave', label: '3. Leave Report', icon: CalendarDays },
-          { id: 'payroll', label: '4. Payroll Report', icon: CreditCard },
-          { id: 'department', label: '5. Department Salary', icon: Building2 },
-          { id: 'overtime', label: '6. Overtime Report', icon: Zap }
-        ].map((tab) => {
+        {(currentRole === 'admin'
+          ? [
+              { id: 'payroll', label: '1. Payroll Report', icon: CreditCard },
+              { id: 'attendance', label: '2. Attendance Report', icon: Clock },
+              { id: 'leave', label: '3. Leave Report', icon: CalendarDays },
+              { id: 'employee', label: '4. Employee Report', icon: Users }
+            ]
+          : [
+              { id: 'attendance', label: '1. Team Attendance Report', icon: Clock },
+              { id: 'leave', label: '2. Team Leave Report', icon: CalendarDays },
+              { id: 'employee', label: '3. Department Employee Report', icon: Users }
+            ]
+        ).map((tab) => {
           const Icon = tab.icon;
           const isActive = reportType === tab.id;
           return (

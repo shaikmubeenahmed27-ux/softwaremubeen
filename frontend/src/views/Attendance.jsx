@@ -229,7 +229,7 @@ export const AttendanceView = () => {
             }}
           />
 
-          {currentRole !== 'employee' && (
+          {currentRole === 'admin' && (
             <>
               <Filter size={15} style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }} />
 
@@ -275,6 +275,33 @@ export const AttendanceView = () => {
                 <option value="Leave">Leave</option>
                 <option value="Holiday">Holiday</option>
                 <option value="Absent">Absent</option>
+              </select>
+            </>
+          )}
+
+          {currentRole === 'manager' && (
+            <>
+              <Filter size={15} style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }} />
+
+              {/* Status Filter for Manager */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.825rem',
+                  outline: 'none'
+                }}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Present">Present</option>
+                <option value="Half Day">Half Day</option>
+                <option value="Leave">Leave</option>
+                <option value="Absent">Absent Only</option>
               </select>
             </>
           )}

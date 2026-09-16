@@ -8,6 +8,7 @@ import { LandingPageView } from './views/LandingPage';
 import { LoginView } from './views/Login';
 import { ForgotPasswordView } from './views/ForgotPassword';
 import { ResetPasswordView } from './views/ResetPassword';
+import { ProfileView } from './views/Profile';
 import { DashboardView } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
 import { DepartmentsView } from './views/Departments';
@@ -46,10 +47,58 @@ const MainContent = () => {
     switch (currentRoute) {
       case 'dashboard':
         return <DashboardView />;
+      case 'profile':
+        return (
+          <ProtectedRoute allowedRoles={['employee', 'admin', 'manager']}>
+            <ProfileView />
+          </ProtectedRoute>
+        );
       case 'employees':
         return (
           <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <EmployeesView />
+          </ProtectedRoute>
+        );
+      case 'attendance':
+        return (
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
+            <AttendanceView />
+          </ProtectedRoute>
+        );
+      case 'leave':
+        return (
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
+            <LeaveView />
+          </ProtectedRoute>
+        );
+      case 'salary':
+        return (
+          <ProtectedRoute allowedRoles={['admin', 'employee']}>
+            <SalaryView />
+          </ProtectedRoute>
+        );
+      case 'payroll':
+        return (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <PayrollView />
+          </ProtectedRoute>
+        );
+      case 'payslips':
+        return (
+          <ProtectedRoute allowedRoles={['admin', 'employee']}>
+            <PayslipsView />
+          </ProtectedRoute>
+        );
+      case 'reports':
+        return (
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <ReportsView />
+          </ProtectedRoute>
+        );
+      case 'settings':
+        return (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <SettingsView />
           </ProtectedRoute>
         );
       case 'departments':
@@ -64,34 +113,6 @@ const MainContent = () => {
             <DesignationsView />
           </ProtectedRoute>
         );
-      case 'attendance':
-        return <AttendanceView />;
-      case 'leave':
-        return (
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
-            <LeaveView />
-          </ProtectedRoute>
-        );
-      case 'salary':
-        return (
-          <ProtectedRoute allowedRoles={['admin']}>
-            <SalaryView />
-          </ProtectedRoute>
-        );
-      case 'payroll':
-        return (
-          <ProtectedRoute allowedRoles={['admin']}>
-            <PayrollView />
-          </ProtectedRoute>
-        );
-      case 'payslips':
-        return <PayslipsView />;
-      case 'reports':
-        return (
-          <ProtectedRoute allowedRoles={['admin', 'manager']}>
-            <ReportsView />
-          </ProtectedRoute>
-        );
       case 'notifications':
         return <NotificationsView />;
       case 'audit-logs':
@@ -100,8 +121,6 @@ const MainContent = () => {
             <AuditLogsView />
           </ProtectedRoute>
         );
-      case 'settings':
-        return <SettingsView />;
       default:
         return <DashboardView />;
     }
