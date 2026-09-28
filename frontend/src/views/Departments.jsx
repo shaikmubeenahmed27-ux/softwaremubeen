@@ -1,17 +1,39 @@
-import React, { useState } from 'react';
-import { Building2, Search, Plus, Users, Shield, Edit2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Building2, Search, Plus, Users, Shield } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 
 export const DepartmentsView = () => {
   const [search, setSearch] = useState('');
   const [departments, setDepartments] = useState([
-    { id: 'DEPT-01', name: 'Executive', code: 'EXEC', manager: 'Sarah Jenkins', headCount: 6, status: 'Active' },
-    { id: 'DEPT-02', name: 'Engineering & Tech', code: 'ENG', manager: 'Marcus Vance', headCount: 64, status: 'Active' },
-    { id: 'DEPT-03', name: 'Human Resources', code: 'HR', manager: 'Sarah Jenkins', headCount: 4, status: 'Active' },
-    { id: 'DEPT-04', name: 'Finance & Accounting', code: 'FIN', manager: 'David Miller', headCount: 22, status: 'Active' },
-    { id: 'DEPT-05', name: 'Product & Design', code: 'PROD', manager: 'Sophia Chen', headCount: 18, status: 'Active' },
-    { id: 'DEPT-06', name: 'Sales & Marketing', code: 'SALES', manager: 'Alex Morgan', headCount: 38, status: 'Active' }
+    { id: 'DEPT-01', name: 'Executive', code: 'EXEC', manager: 'Department Lead', headCount: 0, status: 'Active' },
+    { id: 'DEPT-02', name: 'Engineering & Tech', code: 'ENG', manager: 'Engineering Manager', headCount: 0, status: 'Active' },
+    { id: 'DEPT-03', name: 'Human Resources', code: 'HR', manager: 'HR Manager', headCount: 0, status: 'Active' },
+    { id: 'DEPT-04', name: 'Finance & Accounting', code: 'FIN', manager: 'Finance Lead', headCount: 0, status: 'Active' },
+    { id: 'DEPT-05', name: 'Product & Design', code: 'PROD', manager: 'Product Lead', headCount: 0, status: 'Active' },
+    { id: 'DEPT-06', name: 'Sales & Marketing', code: 'SALES', manager: 'Sales Director', headCount: 0, status: 'Active' }
   ]);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const { data, error } = await supabase.from('departments').select('*, employees(count)');
+        if (!error && data && data.length > 0) {
+          setDepartments(data.map((d) => ({
+            id: d.id,
+            name: d.name,
+            code: d.code,
+            manager: d.manager_name || 'Assigned Lead',
+            headCount: Array.isArray(d.employees) ? d.employees.length : (d.employees?.[0]?.count || 0),
+            status: d.status || 'Active'
+          })));
+        }
+      } catch (err) {
+        console.warn('Using standard department definitions.');
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const filtered = departments.filter(
     (d) =>

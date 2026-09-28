@@ -39,14 +39,17 @@ export const DashboardView = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const metrics = await fetchDashboardMetrics();
+    const metrics = await fetchDashboardMetrics(currentRole, currentUser?.department, currentUser?.id);
     setData(metrics);
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+    const handleUpdate = () => loadData();
+    window.addEventListener('payflow:employees_updated', handleUpdate);
+    return () => window.removeEventListener('payflow:employees_updated', handleUpdate);
+  }, [currentRole, currentUser]);
 
   if (loading || !data) {
     return (
@@ -123,7 +126,7 @@ export const DashboardView = () => {
             subtext="Clocked In"
             icon={Clock}
             iconBg="rgba(16, 185, 129, 0.12)"
-            badgeText={`${Math.round((kpi.presentToday / kpi.activeEmployees) * 100)}% Rate`}
+            badgeText={`${kpi.activeEmployees > 0 ? Math.round((kpi.presentToday / kpi.activeEmployees) * 100) : 0}% Rate`}
             badgeVariant="success"
           />
 
@@ -149,7 +152,7 @@ export const DashboardView = () => {
 
           <StatCard
             title="Current Month Payroll"
-            value={`\$${kpi.currentMonthPayroll.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            value={`$${kpi.currentMonthPayroll.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
             subtext="Processed Total"
             icon={DollarSign}
             iconBg="rgba(59, 130, 246, 0.12)"
@@ -204,7 +207,7 @@ export const DashboardView = () => {
         <div className="grid grid-cols-4">
           <StatCard
             title="Team Members"
-            value={12}
+            value={kpi.totalEmployees}
             subtext={`${currentUser.department} Dept`}
             icon={Users}
             iconBg="rgba(59, 130, 246, 0.12)"
@@ -214,17 +217,17 @@ export const DashboardView = () => {
 
           <StatCard
             title="Present Today"
-            value={10}
+            value={kpi.presentToday}
             subtext="Clocked In"
             icon={Clock}
             iconBg="rgba(16, 185, 129, 0.12)"
-            badgeText="83% Rate"
+            badgeText={`${kpi.totalEmployees > 0 ? Math.round((kpi.presentToday / kpi.totalEmployees) * 100) : 0}% Rate`}
             badgeVariant="success"
           />
 
           <StatCard
             title="Employees on Leave"
-            value={1}
+            value={kpi.onLeaveToday}
             subtext="Approved Out"
             icon={CalendarDays}
             iconBg="rgba(168, 85, 247, 0.12)"
@@ -234,7 +237,7 @@ export const DashboardView = () => {
 
           <StatCard
             title="Pending Leave Requests"
-            value={2}
+            value={kpi.pendingLeaves}
             subtext="Requires Review"
             icon={FileCheck}
             iconBg="rgba(245, 158, 11, 0.12)"
@@ -254,7 +257,7 @@ export const DashboardView = () => {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button className="btn btn-primary" onClick={() => navigateTo('leave')} style={{ justifyContent: 'space-between' }}>
-                <span><FileCheck size={16} /> Review Pending Team Leave Requests (2)</span>
+                <span><FileCheck size={16} /> Review Pending Team Leave Requests ({kpi.pendingLeaves})</span>
                 <ArrowRight size={16} />
               </button>
               <button className="btn btn-secondary" onClick={() => navigateTo('employees')} style={{ justifyContent: 'space-between' }}>
@@ -289,7 +292,7 @@ export const DashboardView = () => {
       <div className="grid grid-cols-5">
         <StatCard
           title="My Salary"
-          value="\$6,420"
+          value="$0.00"
           subtext="Net Monthly Pay"
           icon={DollarSign}
           iconBg="rgba(16, 185, 129, 0.12)"
@@ -299,17 +302,17 @@ export const DashboardView = () => {
 
         <StatCard
           title="Attendance"
-          value="100%"
-          subtext="22 Days Present"
+          value={attendanceStats.rate}
+          subtext={`${kpi.presentToday} Days Present`}
           icon={Clock}
           iconBg="rgba(59, 130, 246, 0.12)"
-          badgeText="Present Today"
+          badgeText="Present Rate"
           badgeVariant="info"
         />
 
         <StatCard
           title="Leave Balance"
-          value="18 Days"
+          value="0 Days"
           subtext="Available Paid Leave"
           icon={CalendarDays}
           iconBg="rgba(168, 85, 247, 0.12)"
@@ -319,21 +322,21 @@ export const DashboardView = () => {
 
         <StatCard
           title="Latest Payslip"
-          value="Aug 2026"
-          subtext="Disbursed \$6,420.00"
+          value="None"
+          subtext="Disbursed $0.00"
           icon={FileText}
           iconBg="rgba(16, 185, 129, 0.12)"
-          badgeText="Disbursed"
+          badgeText="Status"
           badgeVariant="success"
         />
 
         <StatCard
           title="Pending Leave Request"
-          value="0 Pending"
+          value={`${kpi.pendingLeaves} Pending`}
           subtext="Up to date"
           icon={CheckCircle}
           iconBg="rgba(245, 158, 11, 0.12)"
-          badgeText="None"
+          badgeText="Status"
           badgeVariant="neutral"
         />
       </div>

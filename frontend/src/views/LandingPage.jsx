@@ -33,7 +33,10 @@ import {
   Activity,
   ArrowUpRight,
   Briefcase,
-  HelpCircle
+  HelpCircle,
+  Crown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const LandingPageView = () => {
@@ -41,54 +44,9 @@ export const LandingPageView = () => {
   const isDark = theme === 'dark';
 
   // State
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [activeShowcaseTab, setActiveShowcaseTab] = useState('payroll');
-
-  // Login form state
-  const [selectedRole, setSelectedRole] = useState('admin');
-  const [email, setEmail] = useState('admin@payflow.hr');
-  const [password, setPassword] = useState('••••••••••••');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authError, setAuthError] = useState('');
-
-  const handleOpenLoginModal = (role = 'admin') => {
-    setSelectedRole(role);
-    if (role === 'admin') setEmail('admin@payflow.hr');
-    else if (role === 'manager') setEmail('marcus.vance@payflow.hr');
-    else setEmail('elena.r@payflow.hr');
-
-    setAuthError('');
-    setIsLoginModalOpen(true);
-  };
-
-  const handleRoleQuickSelect = (role, defaultEmail) => {
-    setSelectedRole(role);
-    setEmail(defaultEmail);
-    setAuthError('');
-  };
-
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setAuthError('');
-
-    try {
-      const res = await login(email, password, selectedRole);
-      if (res && res.error) {
-        setAuthError(res.error.message || 'Invalid credentials.');
-      } else {
-        setIsLoginModalOpen(false);
-        navigateTo('dashboard');
-      }
-    } catch (err) {
-      setAuthError('Authentication failed. Please check your credentials.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Scroll handler for navbar background shadow effect
   const [scrolled, setScrolled] = useState(false);
@@ -324,28 +282,6 @@ export const LandingPageView = () => {
               Get Started →
             </button>
 
-            {/* Demo Persona Quick Modal Launcher (for evaluators) */}
-            <button
-              onClick={() => handleOpenLoginModal('admin')}
-              title="Quick Demo Selector"
-              style={{
-                padding: '0.65rem 0.85rem',
-                borderRadius: '10px',
-                border: isDark ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
-                background: isDark ? 'rgba(124, 58, 237, 0.15)' : '#f3e8ff',
-                color: isDark ? '#c084fc' : '#7c3aed',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}
-              className="hidden-mobile"
-            >
-              <Zap size={14} /> Persona
-            </button>
-
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -386,8 +322,8 @@ export const LandingPageView = () => {
             <a href="#roles" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>User Roles</a>
             <a href="#about" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>About</a>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#ffffff', fontWeight: 700, color: '#0f172a' }}>Log In</button>
-              <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700 }}>Get Started →</button>
+              <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: isDark ? '#0f172a' : '#ffffff', fontWeight: 700, color: isDark ? '#ffffff' : '#0f172a', fontSize: '0.85rem' }}>Log In</button>
+              <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Get Started →</button>
             </div>
           </div>
         )}
@@ -582,13 +518,27 @@ export const LandingPageView = () => {
                     <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>P</div>
                     PayFlow HR
                   </div>
-                  <div style={{ background: '#1e293b', color: '#3b82f6', padding: '0.35rem 0.5rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.675rem' }}>📊 Admin Dashboard</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>👥 Employees</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>⏰ Attendance</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>📅 Leave</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>💳 Payroll</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>📑 Payslips</div>
-                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem' }}>📈 Reports</div>
+                  <div style={{ background: '#1e293b', color: '#3b82f6', padding: '0.35rem 0.5rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.675rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <BarChart3 size={11} /> Admin Dashboard
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Users size={11} /> Employees
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Clock size={11} /> Attendance
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <CalendarDays size={11} /> Leave
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <CreditCard size={11} /> Payroll
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <FileText size={11} /> Payslips
+                  </div>
+                  <div style={{ color: '#94a3b8', padding: '0.25rem 0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <TrendingUp size={11} /> Reports
+                  </div>
                 </div>
 
                 {/* Dashboard Main Content Mockup */}
@@ -655,12 +605,12 @@ export const LandingPageView = () => {
                   <div style={{ background: '#0f172a', padding: '0.5rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ fontSize: '0.6rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.3rem' }}>Recent Activities</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.55rem', color: '#94a3b8' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>✓ Sept Payroll calculated for 245 staff</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={9} style={{ color: '#10b981' }} /> Sept Payroll calculated for 245 staff</span>
                         <span style={{ color: '#64748b' }}>2 hrs ago</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>✓ Leave approved for Marcus Vance</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={9} style={{ color: '#10b981' }} /> Leave approved for Marcus Vance</span>
                         <span style={{ color: '#64748b' }}>4 hrs ago</span>
                       </div>
                     </div>
@@ -949,18 +899,18 @@ export const LandingPageView = () => {
                   </div>
                   <div style={{ background: '#0f172a', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#1e293b', borderRadius: '6px', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: 700 }}>Sarah Jenkins</span>
-                      <span style={{ color: '#94a3b8' }}>Executive &bull; VP of HR Operations</span>
+                      <span style={{ fontWeight: 700 }}>HR Administrator</span>
+                      <span style={{ color: '#94a3b8' }}>Executive &bull; VP of Operations</span>
                       <span style={{ color: '#10b981', fontWeight: 700 }}>Active</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#1e293b', borderRadius: '6px', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: 700 }}>Marcus Vance</span>
-                      <span style={{ color: '#94a3b8' }}>Engineering &bull; Engineering Lead</span>
+                      <span style={{ fontWeight: 700 }}>Team Manager</span>
+                      <span style={{ color: '#94a3b8' }}>Engineering &bull; Lead Manager</span>
                       <span style={{ color: '#10b981', fontWeight: 700 }}>Active</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#1e293b', borderRadius: '6px', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: 700 }}>Elena Rostova</span>
-                      <span style={{ color: '#94a3b8' }}>Engineering &bull; Sr. Frontend Engineer</span>
+                      <span style={{ fontWeight: 700 }}>Staff Engineer</span>
+                      <span style={{ color: '#94a3b8' }}>Engineering &bull; Senior Engineer</span>
                       <span style={{ color: '#10b981', fontWeight: 700 }}>Active</span>
                     </div>
                   </div>
@@ -1182,8 +1132,8 @@ export const LandingPageView = () => {
                 Manage employees, salary structures, payroll, attendance, leave and reports.
               </p>
             </div>
-            <button onClick={() => handleOpenLoginModal('admin')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-              Test Admin View →
+            <button onClick={() => navigateTo('login')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+              Sign In as Admin →
             </button>
           </div>
 
@@ -1200,8 +1150,8 @@ export const LandingPageView = () => {
                 Manage department employees, attendance and leave approvals.
               </p>
             </div>
-            <button onClick={() => handleOpenLoginModal('manager')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-              Test Manager View →
+            <button onClick={() => navigateTo('login')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+              Sign In as Manager →
             </button>
           </div>
 
@@ -1218,8 +1168,8 @@ export const LandingPageView = () => {
                 View profile, attendance, leave, salary and payslips.
               </p>
             </div>
-            <button onClick={() => handleOpenLoginModal('employee')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-              Test Employee View →
+            <button onClick={() => navigateTo('login')} style={{ marginTop: '1.5rem', padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: 'transparent', color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+              Sign In as Employee →
             </button>
           </div>
         </div>
@@ -1387,250 +1337,6 @@ export const LandingPageView = () => {
           &copy; 2026 PayFlow HR. All rights reserved.
         </div>
       </footer>
-
-      {/* EVALUATOR DEMO PERSONA SELECTOR MODAL */}
-      {isLoginModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: isDark ? 'rgba(2, 6, 23, 0.82)' : 'rgba(15, 23, 42, 0.55)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem'
-          }}
-          onClick={() => setIsLoginModalOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: '460px',
-              borderRadius: '24px',
-              padding: '2.5rem 2rem',
-              boxShadow: isDark
-                ? '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12)'
-                : '0 25px 60px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.9)',
-              position: 'relative',
-              background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              color: isDark ? '#ffffff' : '#0f172a',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setIsLoginModalOpen(false)}
-              className="btn-icon"
-              style={{
-                position: 'absolute',
-                top: '1.25rem',
-                right: '1.25rem',
-                color: isDark ? '#94a3b8' : '#475569',
-                background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-                borderRadius: '50%'
-              }}
-            >
-              <X size={20} />
-            </button>
-
-            {/* Brand Header */}
-            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-              <div
-                style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '14px',
-                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff',
-                  marginBottom: '0.85rem',
-                  boxShadow: '0 8px 20px rgba(59, 130, 246, 0.4)'
-                }}
-              >
-                <Zap size={28} />
-              </div>
-              <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a', letterSpacing: '-0.02em' }}>
-                PayFlow<span style={{ color: '#3b82f6' }}>HR</span> Sign In
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '0.2rem' }}>
-                Select a persona or enter existing account credentials
-              </p>
-            </div>
-
-            {/* Quick Demo Persona Selector */}
-            <div
-              style={{
-                marginBottom: '1.25rem',
-                background: isDark ? 'rgba(30, 41, 59, 0.7)' : '#f1f5f9',
-                padding: '0.75rem',
-                borderRadius: '12px',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0'
-              }}
-            >
-              <div style={{ fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <ShieldCheck size={14} style={{ color: '#3b82f6' }} /> Select Demo Persona
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => handleRoleQuickSelect('admin', 'admin@payflow.hr')}
-                  style={{
-                    padding: '0.55rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: selectedRole === 'admin' ? '#3b82f6' : isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1',
-                    background: selectedRole === 'admin' ? '#2563eb' : isDark ? 'transparent' : '#ffffff',
-                    color: selectedRole === 'admin' ? '#ffffff' : isDark ? '#94a3b8' : '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Admin
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleRoleQuickSelect('manager', 'marcus.vance@payflow.hr')}
-                  style={{
-                    padding: '0.55rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: selectedRole === 'manager' ? '#3b82f6' : isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1',
-                    background: selectedRole === 'manager' ? '#2563eb' : isDark ? 'transparent' : '#ffffff',
-                    color: selectedRole === 'manager' ? '#ffffff' : isDark ? '#94a3b8' : '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Manager
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleRoleQuickSelect('employee', 'elena.r@payflow.hr')}
-                  style={{
-                    padding: '0.55rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: selectedRole === 'employee' ? '#3b82f6' : isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1',
-                    background: selectedRole === 'employee' ? '#2563eb' : isDark ? 'transparent' : '#ffffff',
-                    color: selectedRole === 'employee' ? '#ffffff' : isDark ? '#94a3b8' : '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Employee
-                </button>
-              </div>
-            </div>
-
-            {authError && (
-              <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#ef4444', fontSize: '0.85rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <AlertCircle size={18} /> {authError}
-              </div>
-            )}
-
-            {/* Login Form */}
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: isDark ? '#94a3b8' : '#475569', marginBottom: '0.35rem' }}>
-                  Work Email Address
-                </label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Mail size={18} style={{ position: 'absolute', left: '12px', color: isDark ? '#64748b' : '#94a3b8' }} />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 0.875rem 0.65rem 2.4rem',
-                      borderRadius: '10px',
-                      background: isDark ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
-                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #cbd5e1',
-                      color: isDark ? '#ffffff' : '#0f172a',
-                      fontSize: '0.875rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: isDark ? '#94a3b8' : '#475569' }}>
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoginModalOpen(false);
-                      navigateTo('forgot-password');
-                    }}
-                    style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Lock size={18} style={{ position: 'absolute', left: '12px', color: isDark ? '#64748b' : '#94a3b8' }} />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 0.875rem 0.65rem 2.4rem',
-                      borderRadius: '10px',
-                      background: isDark ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
-                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #cbd5e1',
-                      color: isDark ? '#ffffff' : '#0f172a',
-                      fontSize: '0.875rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  marginTop: '0.5rem',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
-                }}
-              >
-                {isSubmitting ? 'Authenticating...' : `Sign In as ${selectedRole.toUpperCase()}`}
-                {!isSubmitting && <ArrowRight size={18} />}
-              </button>
-            </form>
-
-            <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.75rem', color: isDark ? '#64748b' : '#94a3b8' }}>
-              Secure Enterprise Payroll Portal &bull; SSL 256-bit Encryption
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

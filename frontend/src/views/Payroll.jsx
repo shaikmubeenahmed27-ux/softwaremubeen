@@ -5,8 +5,7 @@ import {
   getPayrollItems,
   createPayrollBatch,
   approvePayrollBatch,
-  processPayrollBatch,
-  checkDuplicatePayrollBatch
+  processPayrollBatch
 } from '../services/payrollService';
 import { Badge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -19,15 +18,11 @@ import { PayrollDetailModal } from '../components/payroll/PayrollDetailModal';
 import {
   CreditCard,
   Play,
-  CheckCircle2,
-  AlertTriangle,
-  FileSpreadsheet,
-  Layers,
-  Eye,
   ShieldCheck,
   Zap,
-  ArrowRight,
-  FileText
+  FileText,
+  Eye,
+  Inbox
 } from 'lucide-react';
 
 export const PayrollView = () => {
@@ -49,11 +44,13 @@ export const PayrollView = () => {
     const bList = await getPayrollBatches();
     setBatches(bList);
 
-    const activeBatch = selectedBatch || bList[0];
+    const activeBatch = (selectedBatch && bList.find((b) => b.id === selectedBatch.id)) || bList[0] || null;
+    setSelectedBatch(activeBatch);
     if (activeBatch) {
-      setSelectedBatch(activeBatch);
       const itms = await getPayrollItems(activeBatch.id);
       setItems(itms);
+    } else {
+      setItems([]);
     }
     setLoading(false);
   };
@@ -69,15 +66,22 @@ export const PayrollView = () => {
   };
 
   const handleCreateBatch = async ({ month, department }) => {
-    const res = await createPayrollBatch({ month, department, adminName: currentUser.name });
-    if (res.success) {
-      await loadData();
+    const res = await createPayrollBatch({ month, department, adminName: currentUser?.name || 'Admin' });
+    if (res.error) {
+      alert(res.error.message);
+      return;
+    }
+    if (res.success && res.batch) {
+      const bList = await getPayrollBatches();
+      setBatches(bList);
+      setSelectedBatch(res.batch);
+      setItems(res.items || []);
     }
   };
 
   const handleApproveBatch = async () => {
     if (selectedBatch) {
-      await approvePayrollBatch(selectedBatch.id, currentUser.name);
+      await approvePayrollBatch(selectedBatch.id, currentUser?.name || 'Admin');
       await loadData();
     }
   };
@@ -103,7 +107,7 @@ export const PayrollView = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
       {/* Page Header */}
       <div className="page-header">
         <div className="page-title-group">
@@ -128,7 +132,7 @@ export const PayrollView = () => {
         <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--primary-400)', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
           8-Step Execution Workflow Stepper
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
           <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-app)', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary-400)' }}>STEPS 1 & 2</div>
             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>1. Select Month & Dept</div>
@@ -161,7 +165,7 @@ export const PayrollView = () => {
                 {getStatusBadge(selectedBatch.status)}
               </div>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Target: <strong style={{ color: '#ffffff' }}>{selectedBatch.department}</strong> &bull; Total Disbursable Net: <strong style={{ color: '#10b981' }}>\${selectedBatch.netTotal.toLocaleString()}</strong>
+                Target: <strong style={{ color: '#ffffff' }}>{selectedBatch.department}</strong> &bull; Total Disbursable Net: <strong style={{ color: '#10b981' }}>${selectedBatch.netTotal.toLocaleString()}</strong> ({selectedBatch.totalEmployees} Employees)
               </p>
             </div>
 
@@ -191,32 +195,63 @@ export const PayrollView = () => {
       )}
 
       {/* Batches Selector List */}
-      <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto' }}>
-        {batches.map((b) => (
-          <button
-            key={b.id}
-            onClick={() => handleBatchSelect(b)}
-            style={{
-              padding: '0.6rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid',
-              borderColor: selectedBatch?.id === b.id ? 'var(--primary-500)' : 'var(--border-color)',
-              background: selectedBatch?.id === b.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
-              color: 'var(--text-main)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {b.cycleName} ({b.status})
-          </button>
-        ))}
-      </div>
+      {batches.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+          {batches.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => handleBatchSelect(b)}
+              style={{
+                padding: '0.6rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid',
+                borderColor: selectedBatch?.id === b.id ? 'var(--primary-500)' : 'var(--border-color)',
+                background: selectedBatch?.id === b.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)',
+                color: 'var(--text-main)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {b.cycleName} ({b.status})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Main Table: Payroll Line Items */}
       {loading ? (
         <LoadingSpinner size={36} label="Calculating payroll items and cross-module deductions..." />
+      ) : batches.length === 0 ? (
+        <div className="card" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            background: 'var(--bg-app)',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1rem'
+          }}>
+            <Inbox size={24} />
+          </div>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            No Payroll Cycles Generated Yet
+          </h3>
+          <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Click "Run New Payroll Cycle" above to select a month and calculate automatic salary, attendance, and leave deductions.
+          </p>
+          <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)} style={{ margin: '0 auto' }}>
+            <Play size={16} /> Run New Payroll Cycle
+          </button>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="card" style={{ padding: '3rem 1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          No employee items found for this batch.
+        </div>
       ) : (
         <div className="data-table-container">
           <table className="data-table">
@@ -239,10 +274,10 @@ export const PayrollView = () => {
                   <td style={{ fontWeight: 600, color: 'var(--primary-400)', fontFamily: 'monospace' }}>{pi.empId}</td>
                   <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{pi.empName}</td>
                   <td><Badge variant="info">{pi.department}</Badge></td>
-                  <td>\${pi.basicSalary.toLocaleString()}</td>
-                  <td style={{ fontWeight: 600, color: '#ffffff' }}>\${pi.grossSalary.toLocaleString()}</td>
-                  <td style={{ fontWeight: 600, color: '#ef4444' }}>-\${pi.totalDeductions.toLocaleString()}</td>
-                  <td style={{ fontWeight: 800, color: '#10b981' }}>\${pi.netSalary.toLocaleString()}</td>
+                  <td>${pi.basicSalary.toLocaleString()}</td>
+                  <td style={{ fontWeight: 600, color: '#ffffff' }}>${pi.grossSalary.toLocaleString()}</td>
+                  <td style={{ fontWeight: 600, color: '#ef4444' }}>-${pi.totalDeductions.toLocaleString()}</td>
+                  <td style={{ fontWeight: 800, color: '#10b981' }}>${pi.netSalary.toLocaleString()}</td>
                   <td>{getStatusBadge(pi.status || selectedBatch?.status)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <button
@@ -282,3 +317,4 @@ export const PayrollView = () => {
     </div>
   );
 };
+export default PayrollView;

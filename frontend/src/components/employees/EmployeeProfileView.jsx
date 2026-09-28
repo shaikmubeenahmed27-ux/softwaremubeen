@@ -76,7 +76,9 @@ export const EmployeeProfileView = ({ employee, isOpen, onClose }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
             <img
-              src={employee.avatar}
+              src={employee.avatar && !employee.avatar.includes('photo-1494790108377')
+                ? employee.avatar
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.fullName || 'Staff')}&background=3b82f6&color=fff&bold=true`}
               alt={employee.fullName}
               style={{
                 width: '64px',

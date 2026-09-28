@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { USER_ROLES } from '../../config/navigation';
 import { Badge } from '../common/Badge';
-import { User, Settings, LogOut, ChevronDown, CheckCircle2, Shield } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
 
 export const UserProfileMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { currentUser, currentRole, switchRole, logout, navigateTo } = useAuth();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const { currentUser, currentRole, logout, navigateTo } = useAuth();
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -14,6 +14,7 @@ export const UserProfileMenu = () => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setShowConfirm(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -25,6 +26,10 @@ export const UserProfileMenu = () => {
     if (role === 'manager') return 'info';
     return 'success';
   };
+
+  const userName = currentUser?.name || 'User';
+  const userEmail = currentUser?.email || '';
+  const userAvatar = currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3b82f6&color=fff`;
 
   return (
     <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -44,8 +49,8 @@ export const UserProfileMenu = () => {
         }}
       >
         <img
-          src={currentUser.avatar}
-          alt={currentUser.name}
+          src={userAvatar}
+          alt={userName}
           style={{
             width: '36px',
             height: '36px',
@@ -55,8 +60,8 @@ export const UserProfileMenu = () => {
           }}
         />
         <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <span style={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.2 }}>{currentUser.name}</span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{currentUser.roleLabel}</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.2 }}>{userName}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{currentUser?.roleLabel || currentRole.toUpperCase()}</span>
         </div>
         <ChevronDown size={16} style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--transition-fast)' }} />
       </button>
@@ -68,7 +73,7 @@ export const UserProfileMenu = () => {
             position: 'absolute',
             right: 0,
             top: 'calc(100% + 8px)',
-            width: '280px',
+            width: '320px',
             borderRadius: 'var(--radius-lg)',
             boxShadow: 'var(--shadow-lg)',
             zIndex: 100,
@@ -78,55 +83,37 @@ export const UserProfileMenu = () => {
         >
           {/* User info card */}
           <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>{currentUser.name}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{currentUser.email}</div>
-            <Badge variant={getRoleVariant(currentRole)} dot>
-              {currentUser.roleLabel}
-            </Badge>
-          </div>
-
-          {/* Switch Role Section */}
-          <div style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.35rem 1rem' }}>
-              Demo Role Navigation
+            <div style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>{userName}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>{userEmail}</div>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <Badge variant={getRoleVariant(currentRole)} dot>
+                {currentUser?.roleLabel || currentRole.toUpperCase()}
+              </Badge>
+              {currentUser?.department && (
+                <span style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  background: 'var(--bg-app, #f1f5f9)',
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '6px',
+                  fontWeight: 500
+                }}>
+                  {currentUser.department}
+                </span>
+              )}
             </div>
-            {USER_ROLES.map((role) => (
-              <button
-                key={role.id}
-                onClick={() => {
-                  switchRole(role.id);
-                  setIsOpen(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.85rem',
-                  background: currentRole === role.id ? 'var(--bg-surface-hover)' : 'transparent',
-                  border: 'none',
-                  color: currentRole === role.id ? 'var(--primary-400)' : 'var(--text-main)',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Shield size={14} style={{ color: currentRole === role.id ? 'var(--primary-500)' : 'var(--slate-400)' }} />
-                  <span>{role.name} View</span>
-                </div>
-                {currentRole === role.id && <CheckCircle2 size={15} style={{ color: 'var(--primary-500)' }} />}
-              </button>
-            ))}
           </div>
 
           {/* Menu Items */}
           <div style={{ padding: '0.35rem 0' }}>
             <button
               onClick={() => {
-                navigateTo('settings');
+                navigateTo('profile');
                 setIsOpen(false);
+                setShowConfirm(false);
               }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -137,18 +124,23 @@ export const UserProfileMenu = () => {
                 color: 'var(--text-main)',
                 background: 'transparent',
                 border: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background 0.15s'
               }}
             >
-              <Settings size={16} style={{ color: 'var(--text-muted)' }} />
-              <span>Account Settings</span>
+              <User size={16} style={{ color: 'var(--text-muted)' }} />
+              <span>My Profile</span>
             </button>
 
             <button
               onClick={() => {
-                logout();
+                navigateTo('settings');
                 setIsOpen(false);
+                setShowConfirm(false);
               }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -156,15 +148,93 @@ export const UserProfileMenu = () => {
                 width: '100%',
                 padding: '0.55rem 1rem',
                 fontSize: '0.875rem',
-                color: 'var(--danger-text)',
+                color: 'var(--text-main)',
                 background: 'transparent',
                 border: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background 0.15s'
+              }}
+            >
+              <Settings size={16} style={{ color: 'var(--text-muted)' }} />
+              <span>Account Settings</span>
+            </button>
+
+            <button
+              onClick={() => setShowConfirm(!showConfirm)}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                width: '100%',
+                padding: '0.55rem 1rem',
+                fontSize: '0.875rem',
+                color: '#ef4444',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background 0.15s'
               }}
             >
               <LogOut size={16} />
               <span>Sign Out</span>
             </button>
+
+            {/* Inline Confirmation below Sign Out */}
+            {showConfirm && (
+              <div
+                style={{
+                  padding: '0.6rem 1rem',
+                  marginTop: '0.35rem',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'rgba(239, 68, 68, 0.06)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem'
+                }}
+              >
+                <div style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                  Do you want to sign out?
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={logout}
+                    style={{
+                      flex: 1,
+                      padding: '0.35rem',
+                      borderRadius: '6px',
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '0.775rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    style={{
+                      flex: 1,
+                      padding: '0.35rem',
+                      borderRadius: '6px',
+                      background: 'var(--bg-surface-hover)',
+                      color: 'var(--text-main)',
+                      border: '1px solid var(--border-color)',
+                      fontSize: '0.775rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

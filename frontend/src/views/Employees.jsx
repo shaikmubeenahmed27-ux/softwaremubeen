@@ -3,7 +3,8 @@ import {
   getEmployees,
   createEmployee,
   updateEmployee,
-  deactivateEmployee
+  deactivateEmployee,
+  deleteEmployee
 } from '../services/employeeService';
 import { Badge } from '../components/common/Badge';
 import { EmptyState } from '../components/common/EmptyState';
@@ -23,10 +24,12 @@ import {
   Eye,
   Edit2,
   UserX,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  MoreVertical
+  MoreVertical,
+  Building2
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
@@ -58,6 +61,9 @@ export const EmployeesView = () => {
 
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [employeeToDeactivate, setEmployeeToDeactivate] = useState(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -94,9 +100,11 @@ export const EmployeesView = () => {
   // Actions
   const handleCreateSubmit = async (formData) => {
     if (editingEmployee) {
-      await updateEmployee(editingEmployee.id, formData);
+      const res = await updateEmployee(editingEmployee.id, formData);
+      if (res?.error) throw res.error;
     } else {
-      await createEmployee(formData);
+      const res = await createEmployee(formData);
+      if (res?.error) throw res.error;
     }
     loadData();
   };
@@ -106,6 +114,15 @@ export const EmployeesView = () => {
       await deactivateEmployee(employeeToDeactivate.id);
       setIsDeactivateModalOpen(false);
       setEmployeeToDeactivate(null);
+      loadData();
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (employeeToDelete) {
+      await deleteEmployee(employeeToDelete.id);
+      setIsDeleteModalOpen(false);
+      setEmployeeToDelete(null);
       loadData();
     }
   };
@@ -135,6 +152,17 @@ export const EmployeesView = () => {
               }}
             >
               <Plus size={16} /> Onboard New Employee
+            </button>
+          )}
+          {currentRole === 'manager' && (
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setEditingEmployee(null);
+                setIsFormModalOpen(true);
+              }}
+            >
+              <Plus size={16} /> Add Team Member
             </button>
           )}
         </div>
@@ -172,30 +200,49 @@ export const EmployeesView = () => {
             <Filter size={15} style={{ color: 'var(--text-muted)' }} />
 
             {/* Dept Filter */}
-            <select
-              value={deptFilter}
-              onChange={(e) => {
-                setDeptFilter(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: '0.45rem 0.75rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-app)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-main)',
-                fontSize: '0.825rem',
-                outline: 'none'
-              }}
-            >
-              <option value="All">All Departments</option>
-              <option value="Executive">Executive</option>
-              <option value="Engineering & Tech">Engineering & Tech</option>
-              <option value="Human Resources">Human Resources</option>
-              <option value="Finance & Accounting">Finance & Accounting</option>
-              <option value="Product & Design">Product & Design</option>
-              <option value="Sales & Marketing">Sales & Marketing</option>
-            </select>
+            {currentRole === 'manager' ? (
+              <span
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid var(--primary-500)',
+                  color: 'var(--primary-400)',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+              >
+                <Building2 size={14} /> {currentUser.department}
+              </span>
+            ) : (
+              <select
+                value={deptFilter}
+                onChange={(e) => {
+                  setDeptFilter(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.825rem',
+                  outline: 'none'
+                }}
+              >
+                <option value="All">All Departments</option>
+                <option value="Executive">Executive</option>
+                <option value="Engineering & Tech">Engineering & Tech</option>
+                <option value="Human Resources">Human Resources</option>
+                <option value="Finance & Accounting">Finance & Accounting</option>
+                <option value="Product & Design">Product & Design</option>
+                <option value="Sales & Marketing">Sales & Marketing</option>
+              </select>
+            )}
 
             {/* Status Filter */}
             <select
@@ -299,11 +346,36 @@ export const EmployeesView = () => {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <img
-                          src={emp.avatar}
-                          alt={emp.fullName}
-                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-                        />
+                        {emp.avatar && !emp.avatar.includes('photo-1494790108377') ? (
+                          <img
+                            src={emp.avatar}
+                            alt={emp.fullName}
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              flexShrink: 0
+                            }}
+                          >
+                            {(emp.fullName || 'Staff')
+                              .split(' ')
+                              .map((n) => n[0])
+                              .slice(0, 2)
+                              .join('')
+                              .toUpperCase()}
+                          </div>
+                        )}
                         <div>
                           <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{emp.fullName}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.email}</div>
@@ -333,20 +405,23 @@ export const EmployeesView = () => {
                           <Eye size={16} style={{ color: 'var(--primary-400)' }} />
                         </button>
 
-                        {/* Admin-only: Edit Profile & Deactivate */}
+                        {/* Edit Profile: Admin or Manager */}
+                        {(currentRole === 'admin' || currentRole === 'manager') && (
+                          <button
+                            className="btn-icon"
+                            title="Edit Profile"
+                            onClick={() => {
+                              setEditingEmployee(emp);
+                              setIsFormModalOpen(true);
+                            }}
+                          >
+                            <Edit2 size={16} style={{ color: 'var(--text-main)' }} />
+                          </button>
+                        )}
+
+                        {/* Admin-only: Deactivate & Delete */}
                         {currentRole === 'admin' && (
                           <>
-                            <button
-                              className="btn-icon"
-                              title="Edit Profile"
-                              onClick={() => {
-                                setEditingEmployee(emp);
-                                setIsFormModalOpen(true);
-                              }}
-                            >
-                              <Edit2 size={16} style={{ color: 'var(--text-main)' }} />
-                            </button>
-
                             {emp.status !== 'inactive' && (
                               <button
                                 className="btn-icon"
@@ -356,9 +431,20 @@ export const EmployeesView = () => {
                                   setIsDeactivateModalOpen(true);
                                 }}
                               >
-                                <UserX size={16} style={{ color: '#ef4444' }} />
+                                <UserX size={16} style={{ color: '#f59e0b' }} />
                               </button>
                             )}
+
+                            <button
+                              className="btn-icon"
+                              title="Permanently Delete Employee"
+                              onClick={() => {
+                                setEmployeeToDelete(emp);
+                                setIsDeleteModalOpen(true);
+                              }}
+                            >
+                              <Trash2 size={16} style={{ color: '#ef4444' }} />
+                            </button>
                           </>
                         )}
                       </div>
@@ -406,6 +492,7 @@ export const EmployeesView = () => {
           setEditingEmployee(null);
         }}
         onSubmit={handleCreateSubmit}
+        lockedDepartment={currentRole === 'manager' ? currentUser.department : null}
       />
 
       {/* 7-Tab Profile View */}
@@ -429,6 +516,20 @@ export const EmployeesView = () => {
         onClose={() => {
           setIsDeactivateModalOpen(false);
           setEmployeeToDeactivate(null);
+        }}
+      />
+
+      {/* Permanent Deletion Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        title="Permanently Delete Employee Profile?"
+        message={`Are you sure you want to permanently delete ${employeeToDelete?.fullName}? This profile and their employee record will be completely removed.`}
+        confirmLabel="Permanently Delete"
+        confirmVariant="danger"
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setEmployeeToDelete(null);
         }}
       />
     </div>

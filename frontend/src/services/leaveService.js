@@ -1,191 +1,493 @@
 import { supabase } from '../lib/supabase';
 
-// Default leave categories
+// Leave type definitions
 export const LEAVE_TYPES = [
-  { id: 'lt_1', name: 'Casual Leave', code: 'CASUAL', defaultDays: 10, isPaid: true, color: '#3b82f6' },
-  { id: 'lt_2', name: 'Sick Leave', code: 'SICK', defaultDays: 12, isPaid: true, color: '#a855f7' },
-  { id: 'lt_3', name: 'Earned Leave', code: 'EARNED', defaultDays: 20, isPaid: true, color: '#10b981' },
-  { id: 'lt_4', name: 'Unpaid Leave', code: 'UNPAID', defaultDays: 30, isPaid: false, color: '#ef4444' },
-  { id: 'lt_5', name: 'Other', code: 'OTHER', defaultDays: 5, isPaid: true, color: '#64748b' }
+  { code: 'CASUAL', name: 'Casual Leave',  isPaid: true,  defaultDays: 0, color: '#2563eb' },
+  { code: 'SICK',   name: 'Sick Leave',    isPaid: true,  defaultDays: 0, color: '#9333ea' },
+  { code: 'EARNED', name: 'Earned Leave',  isPaid: true,  defaultDays: 0, color: '#059669' },
+  { code: 'UNPAID', name: 'Unpaid Leave',  isPaid: false, defaultDays: 0, color: '#d97706' },
+  { code: 'OTHER',  name: 'Other',         isPaid: true,  defaultDays: 0, color: '#e11d48' }
 ];
-
-// Empty stores for clean production usage — populates strictly from database and user entry
-let MOCK_LEAVE_BALANCES = {};
-let MOCK_LEAVE_REQUESTS = [];
 
 export async function getLeaveTypes() {
   return LEAVE_TYPES;
 }
 
-export async function getLeaveBalances(employeeId = '') {
-  if (MOCK_LEAVE_BALANCES[employeeId]) {
-    return MOCK_LEAVE_BALANCES[employeeId];
+const LOCAL_LEAVE_KEY = 'payflow_real_leave_records';
+
+// Clear legacy dummy caches if any
+try {
+  localStorage.removeItem('payflow_leave_records_cache_v2');
+  localStorage.removeItem('payflow_leave_balances_cache_v2');
+  localStorage.removeItem('payflow_leave_requests_v3');
+  localStorage.removeItem('payflow_leave_emp_balances_v3');
+} catch {}
+
+function getLocalRequests() {
+  try {
+    const raw = localStorage.getItem(LOCAL_LEAVE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
   }
-  return [
-    { type: 'Casual Leave', code: 'CASUAL', allocated: 10, used: 0, remaining: 10 },
-    { type: 'Sick Leave', code: 'SICK', allocated: 12, used: 0, remaining: 12 },
-    { type: 'Earned Leave', code: 'EARNED', allocated: 20, used: 0, remaining: 20 },
-    { type: 'Unpaid Leave', code: 'UNPAID', allocated: 30, used: 0, remaining: 30 },
-    { type: 'Other', code: 'OTHER', allocated: 5, used: 0, remaining: 5 }
-  ];
 }
 
+function saveLocalRequests(records) {
+  try {
+    localStorage.setItem(LOCAL_LEAVE_KEY, JSON.stringify(records));
+  } catch (err) {
+    console.warn('Could not cache leave records', err);
+  }
+}
+
+export function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  if (/[a-zA-Z]/.test(dateStr)) return dateStr;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+export function getAvatarMeta(name = 'User') {
+  const parts = name.trim().split(' ');
+  const initials = parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+
+  const colors = ['#2563eb', '#9333ea', '#059669', '#f97316', '#e11d48', '#0891b2', '#4f46e5'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const color = colors[Math.abs(hash) % colors.length];
+
+  return { initials, color };
+}
+
+// ─── Get Real Leave Balances for an Employee ──────────────────────────────────
+export async function getLeaveBalances(employeeIdentifier = '', userEmail = '') {
+  const baseBalances = LEAVE_TYPES.map((lt) => ({
+    type: lt.name,
+    code: lt.code,
+    allocated: 0,
+    used: 0,
+    remaining: 0
+  }));
+
+  if (!employeeIdentifier && !userEmail) return baseBalances;
+
+  try {
+    let empUuid = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeIdentifier);
+
+    // Resolve employee UUID from employees table
+    let orQuery = [];
+    if (isUuid) {
+      orQuery.push(`id.eq.${employeeIdentifier}`, `profile_id.eq.${employeeIdentifier}`);
+    } else if (employeeIdentifier) {
+      orQuery.push(`employee_code.eq.${employeeIdentifier}`);
+    }
+    if (userEmail) {
+      orQuery.push(`email.eq.${userEmail}`);
+    }
+
+    if (orQuery.length > 0) {
+      const { data: matchedEmp } = await supabase
+        .from('employees')
+        .select('id, employee_code, profile_id, email')
+        .or(orQuery.join(','))
+        .maybeSingle();
+
+      if (matchedEmp?.id) {
+        empUuid = matchedEmp.id;
+      }
+    }
+
+    if (!empUuid && isUuid) {
+      empUuid = employeeIdentifier;
+    }
+
+    const year = new Date().getFullYear();
+
+    // Query explicit balance rows from Supabase
+    let dbBalances = [];
+    if (empUuid) {
+      const { data } = await supabase
+        .from('leave_records')
+        .select('*')
+        .eq('employee_id', empUuid)
+        .eq('record_type', 'balance')
+        .eq('balance_year', year);
+      dbBalances = data || [];
+    }
+
+    // Query approved leave requests from Supabase to count real used days
+    let approvedRequests = [];
+    if (empUuid) {
+      const { data } = await supabase
+        .from('leave_records')
+        .select('*')
+        .eq('employee_id', empUuid)
+        .eq('record_type', 'request')
+        .eq('status', 'approved');
+      approvedRequests = data || [];
+    }
+
+    return baseBalances.map((base) => {
+      const found = dbBalances.find((b) => b.leave_type?.toUpperCase() === base.code);
+      const usedDaysFromRequests = approvedRequests
+        .filter((r) => r.leave_type?.toUpperCase() === base.code)
+        .reduce((sum, r) => sum + (Number(r.total_days) || 0), 0);
+
+      const allocated = found?.allocated_days ?? 0;
+      const used = found?.used_days ?? usedDaysFromRequests;
+      const remaining = found?.remaining_days ?? Math.max(0, allocated - used);
+
+      return {
+        type: base.type,
+        code: base.code,
+        allocated,
+        used,
+        remaining
+      };
+    });
+  } catch (err) {
+    console.warn('getLeaveBalances calculation:', err);
+    return baseBalances;
+  }
+}
+
+// ─── Get Real Leave Requests from Database ────────────────────────────────────
 export async function getLeaveRequests({
   userRole = 'admin',
   userDept = 'Executive',
   authEmployeeId = '',
+  userEmail = '',
+  search = '',
   statusFilter = 'All',
-  typeFilter = 'All'
+  typeFilter = 'All',
+  activeTab = 'requests'
 } = {}) {
+  let records = [];
+
   try {
-    const { data: dbRequests, error } = await supabase
-      .from('leave_requests')
-      .select('*, employees(*, profiles(*), departments(*)), leave_types(*)');
+    const { data, error } = await supabase
+      .from('leave_records')
+      .select('*, employees(*, profiles(*), departments(*))')
+      .eq('record_type', 'request')
+      .order('created_at', { ascending: false });
 
-    let records = [];
-
-    if (!error && dbRequests && dbRequests.length > 0) {
-      records = dbRequests.map((r) => ({
-        id: r.id,
-        empId: r.employees?.employee_code || r.employee_id,
-        empName: r.employees?.profiles?.full_name || 'Staff',
-        department: r.employees?.departments?.name || 'General',
-        leaveType: r.leave_types?.name || 'Casual Leave',
-        typeCode: r.leave_types?.code || 'CASUAL',
-        startDate: r.start_date,
-        endDate: r.end_date,
-        totalDays: r.total_days,
-        reason: r.reason,
-        status: r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Pending',
-        appliedOn: new Date(r.created_at || Date.now()).toISOString().split('T')[0],
-        approvedBy: r.approved_by || null,
-        rejectionReason: r.rejection_reason || null
-      }));
+    if (!error && data && data.length > 0) {
+      records = data.map((r, idx) => {
+        const empName = r.employees?.profiles?.full_name || 
+          `${r.employees?.first_name || ''} ${r.employees?.last_name || ''}`.trim() || 
+          'Staff Member';
+        const meta = getAvatarMeta(empName);
+        return {
+          id: r.id || `LR-${100 + idx}`,
+          empId: r.employee_id,
+          empCode: r.employees?.employee_code || r.employee_id,
+          profileId: r.employees?.profile_id,
+          email: r.employees?.email || r.employees?.profiles?.email,
+          empName,
+          department: r.employees?.departments?.name || 'General',
+          initials: meta.initials,
+          avatarBg: meta.color,
+          leaveType: r.leave_type_name || r.leave_type || 'Casual Leave',
+          typeCode: r.leave_type || 'CASUAL',
+          startDate: formatDateDisplay(r.start_date),
+          endDate: formatDateDisplay(r.end_date),
+          rawStartDate: r.start_date,
+          rawEndDate: r.end_date,
+          totalDays: r.total_days || 1,
+          reason: r.reason || 'Personal leave',
+          status: r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Pending',
+          appliedOn: formatDateDisplay(r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : ''),
+          approvedBy: r.approved_by || null,
+          rejectionReason: r.rejection_reason || null
+        };
+      });
     } else {
-      records = MOCK_LEAVE_REQUESTS;
+      // Return only locally added user records (no dummy seed data)
+      records = getLocalRequests();
     }
-
-    // Role-based Security Enforcement
-    if (userRole === 'employee' && authEmployeeId) {
-      records = records.filter((r) => r.empId === authEmployeeId);
-    } else if (userRole === 'manager' && userDept) {
-      records = records.filter((r) => r.department === userDept);
-    }
-
-    // Status filter
-    if (statusFilter !== 'All') {
-      records = records.filter((r) => r.status.toLowerCase() === statusFilter.toLowerCase());
-    }
-
-    // Category filter
-    if (typeFilter !== 'All') {
-      records = records.filter((r) => r.leaveType === typeFilter || r.typeCode === typeFilter);
-    }
-
-    return records;
   } catch (err) {
-    console.error('Error fetching leave requests:', err);
-    return MOCK_LEAVE_REQUESTS;
+    console.warn('Supabase leave_records query:', err);
+    records = getLocalRequests();
   }
+
+  // Merge locally created requests that haven't synced yet
+  const localList = getLocalRequests();
+  const dbIds = new Set(records.map((r) => r.id));
+  const uniqueLocal = localList.filter((l) => !dbIds.has(l.id));
+  records = [...uniqueLocal, ...records];
+
+  // Role-based filtering
+  if (userRole === 'employee') {
+    records = records.filter((r) =>
+      (authEmployeeId && (r.empId === authEmployeeId || r.empCode === authEmployeeId || r.profileId === authEmployeeId)) ||
+      (userEmail && r.email?.toLowerCase() === userEmail.toLowerCase())
+    );
+  } else if (userRole === 'manager' && userDept) {
+    records = records.filter((r) => r.department === userDept);
+  }
+
+  // Tab filter: 'history' shows only processed requests (Approved, Rejected, Cancelled)
+  if (activeTab === 'history') {
+    records = records.filter((r) => r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Cancelled');
+  }
+
+  // Search filter
+  if (search && search.trim()) {
+    const q = search.trim().toLowerCase();
+    records = records.filter((r) =>
+      r.empName?.toLowerCase().includes(q) ||
+      r.department?.toLowerCase().includes(q) ||
+      r.leaveType?.toLowerCase().includes(q) ||
+      r.reason?.toLowerCase().includes(q) ||
+      r.id?.toLowerCase().includes(q)
+    );
+  }
+
+  // Status filter
+  if (statusFilter !== 'All') {
+    records = records.filter((r) => r.status.toLowerCase() === statusFilter.toLowerCase());
+  }
+
+  // Leave Type filter
+  if (typeFilter !== 'All') {
+    records = records.filter(
+      (r) =>
+        r.leaveType.toLowerCase() === typeFilter.toLowerCase() ||
+        r.typeCode.toLowerCase() === typeFilter.toLowerCase()
+    );
+  }
+
+  return records;
 }
 
+// ─── Apply for Leave (Real Database Insert) ──────────────────────────────────
 export async function applyForLeave(applicationData) {
-  // Calculate total days between start date and end date
   const start = new Date(applicationData.startDate);
   const end = new Date(applicationData.endDate);
-  const diffTime = Math.abs(end - start);
-  const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  const totalDays = isNaN(start.getTime()) || isNaN(end.getTime())
+    ? 1
+    : Math.max(1, Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1);
 
-  const newCode = `LR-${100 + MOCK_LEAVE_REQUESTS.length + 1}`;
-  const newRequest = {
-    id: newCode,
-    empId: applicationData.empId || 'EMP-101',
-    empName: applicationData.empName || 'Staff Member',
+  const leaveTypeMeta = LEAVE_TYPES.find(
+    (lt) => lt.code === (applicationData.typeCode || 'CASUAL') || lt.name === applicationData.leaveType
+  ) || LEAVE_TYPES[0];
+
+  const applicantName = applicationData.empName || 'Employee';
+  const meta = getAvatarMeta(applicantName);
+
+  const newRecord = {
+    id: `LR-${Date.now().toString().slice(-4)}`,
+    empId: applicationData.empId,
+    empCode: applicationData.empCode || applicationData.empId,
+    empName: applicantName,
     department: applicationData.department || 'General',
-    leaveType: applicationData.leaveType || 'Casual Leave',
-    typeCode: applicationData.typeCode || 'CASUAL',
-    startDate: applicationData.startDate,
-    endDate: applicationData.endDate,
-    totalDays: totalDays || 1,
+    initials: meta.initials,
+    avatarBg: meta.color,
+    leaveType: leaveTypeMeta.name,
+    typeCode: leaveTypeMeta.code,
+    startDate: formatDateDisplay(applicationData.startDate),
+    endDate: formatDateDisplay(applicationData.endDate),
+    rawStartDate: applicationData.startDate,
+    rawEndDate: applicationData.endDate,
+    totalDays: totalDays,
     reason: applicationData.reason || 'Personal leave request',
     status: 'Pending',
-    appliedOn: new Date().toISOString().split('T')[0],
+    appliedOn: formatDateDisplay(new Date().toISOString().split('T')[0]),
     approvedBy: null,
     rejectionReason: null
   };
 
-  MOCK_LEAVE_REQUESTS = [newRequest, ...MOCK_LEAVE_REQUESTS];
-  return { success: true, data: newRequest };
+  // Add to local state for instantaneous UI display
+  const localList = getLocalRequests();
+  saveLocalRequests([newRecord, ...localList]);
+
+  // Persist to Supabase Database
+  try {
+    let empUuid = applicationData.empId;
+
+    let orQuery = [];
+    if (empUuid) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(empUuid);
+      if (isUuid) {
+        orQuery.push(`id.eq.${empUuid}`, `profile_id.eq.${empUuid}`);
+      } else {
+        orQuery.push(`employee_code.eq.${empUuid}`);
+      }
+    }
+    if (applicationData.email) {
+      orQuery.push(`email.eq.${applicationData.email}`);
+    }
+
+    if (orQuery.length > 0) {
+      const { data: empRow } = await supabase
+        .from('employees')
+        .select('id')
+        .or(orQuery.join(','))
+        .maybeSingle();
+
+      if (empRow?.id) empUuid = empRow.id;
+    }
+
+    const { data: inserted, error: insErr } = await supabase.from('leave_records').insert({
+      employee_id: empUuid,
+      leave_type: leaveTypeMeta.code,
+      leave_type_name: leaveTypeMeta.name,
+      is_paid: leaveTypeMeta.isPaid,
+      record_type: 'request',
+      start_date: applicationData.startDate,
+      end_date: applicationData.endDate,
+      total_days: totalDays,
+      reason: applicationData.reason,
+      status: 'pending'
+    }).select().maybeSingle();
+
+    if (inserted?.id) {
+      newRecord.id = inserted.id;
+    }
+    if (insErr) {
+      console.warn('applyForLeave DB insert error:', insErr);
+    }
+  } catch (err) {
+    console.warn('applyForLeave DB insert:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('payflow:leave_updated'));
+  }
+
+  return { success: true, data: newRecord };
 }
 
-// Employee cancels pending request
-export async function cancelLeaveRequest(requestId) {
-  MOCK_LEAVE_REQUESTS = MOCK_LEAVE_REQUESTS.map((req) => {
-    if (req.id === requestId && req.status === 'Pending') {
-      return { ...req, status: 'Cancelled' };
+// ─── Approve Leave Request ────────────────────────────────────────────────────
+export async function approveLeaveRequest(requestId, approverName = 'Administrator') {
+  const localList = getLocalRequests().map((r) => {
+    if (r.id === requestId) {
+      return { ...r, status: 'Approved', approvedBy: approverName };
     }
-    return req;
+    return r;
   });
-  return { success: true };
-}
+  saveLocalRequests(localList);
 
-// Manager/Admin approves request -> Automatically update leave balances!
-export async function approveLeaveRequest(requestId, approverName = 'Manager') {
-  let targetReq = null;
-  MOCK_LEAVE_REQUESTS = MOCK_LEAVE_REQUESTS.map((req) => {
-    if (req.id === requestId) {
-      targetReq = { ...req, status: 'Approved', approvedBy: approverName };
-      return targetReq;
-    }
-    return req;
-  });
+  try {
+    const { data: updatedReq } = await supabase.from('leave_records').update({
+      status: 'approved',
+      approved_by: approverName,
+      approved_at: new Date().toISOString()
+    }).eq('id', requestId).select().maybeSingle();
 
-  if (targetReq) {
-    const empId = targetReq.empId;
-    if (MOCK_LEAVE_BALANCES[empId]) {
-      MOCK_LEAVE_BALANCES[empId] = MOCK_LEAVE_BALANCES[empId].map((bal) => {
-        if (bal.type === targetReq.leaveType || bal.code === targetReq.typeCode) {
-          const newUsed = bal.used + targetReq.totalDays;
-          const newRemaining = Math.max(0, bal.allocated - newUsed);
-          return { ...bal, used: newUsed, remaining: newRemaining };
-        }
-        return bal;
-      });
+    if (updatedReq?.employee_id && updatedReq?.leave_type) {
+      const year = new Date().getFullYear();
+      const { data: balRow } = await supabase
+        .from('leave_records')
+        .select('*')
+        .eq('employee_id', updatedReq.employee_id)
+        .eq('leave_type', updatedReq.leave_type)
+        .eq('record_type', 'balance')
+        .eq('balance_year', year)
+        .maybeSingle();
+
+      if (balRow) {
+        const newUsed = (balRow.used_days || 0) + (Number(updatedReq.total_days) || 0);
+        const newRemaining = Math.max(0, (balRow.allocated_days || 0) - newUsed);
+        await supabase
+          .from('leave_records')
+          .update({
+            used_days: newUsed,
+            remaining_days: newRemaining
+          })
+          .eq('id', balRow.id);
+      }
     }
+  } catch (err) {
+    console.warn('approveLeaveRequest DB update:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('payflow:leave_updated'));
   }
 
   return { success: true };
 }
 
-// Manager/Admin rejects request with rejection reason
-export async function rejectLeaveRequest(requestId, rejectionReason, rejecterName = 'Manager') {
-  MOCK_LEAVE_REQUESTS = MOCK_LEAVE_REQUESTS.map((req) => {
-    if (req.id === requestId) {
+// ─── Reject Leave Request ─────────────────────────────────────────────────────
+export async function rejectLeaveRequest(requestId, rejectionReason, rejecterName = 'Administrator') {
+  const localList = getLocalRequests().map((r) => {
+    if (r.id === requestId) {
       return {
-        ...req,
+        ...r,
         status: 'Rejected',
-        approvedBy: null,
-        rejectionReason: rejectionReason || 'Declined by manager due to schedule conflict.'
+        rejectionReason: rejectionReason || 'Declined by administrator.',
+        approvedBy: null
       };
     }
-    return req;
+    return r;
   });
+  saveLocalRequests(localList);
+
+  try {
+    await supabase.from('leave_records').update({
+      status: 'rejected',
+      rejection_reason: rejectionReason || 'Declined by administrator.'
+    }).eq('id', requestId);
+  } catch (err) {
+    console.warn('rejectLeaveRequest DB update:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('payflow:leave_updated'));
+  }
+
   return { success: true };
 }
 
-// Summary of approved unpaid leave for payroll integration
-export async function getUnpaidLeaveSummary(employeeId = 'All', month = '09', year = '2026') {
-  const unpaidRequests = MOCK_LEAVE_REQUESTS.filter(
-    (r) =>
-      (r.empId === employeeId || employeeId === 'All') &&
-      (r.leaveType === 'Unpaid Leave' || r.typeCode === 'UNPAID') &&
-      r.status === 'Approved'
-  );
+// ─── Cancel Leave Request ─────────────────────────────────────────────────────
+export async function cancelLeaveRequest(requestId) {
+  const localList = getLocalRequests().map((r) => {
+    if (r.id === requestId) {
+      return { ...r, status: 'Cancelled' };
+    }
+    return r;
+  });
+  saveLocalRequests(localList);
 
-  const totalUnpaidDays = unpaidRequests.reduce((acc, r) => acc + r.totalDays, 0);
-  return {
-    employeeId,
-    unpaidDays: totalUnpaidDays,
-    payrollDeductionRequired: totalUnpaidDays > 0
-  };
+  try {
+    await supabase.from('leave_records').update({
+      status: 'cancelled'
+    }).eq('id', requestId);
+  } catch (err) {
+    console.warn('cancelLeaveRequest DB update:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('payflow:leave_updated'));
+  }
+
+  return { success: true };
+}
+
+// ─── Unpaid Leave Summary ─────────────────────────────────────────────────────
+export async function getUnpaidLeaveSummary(employeeId = 'All') {
+  try {
+    const records = getLocalRequests().filter((r) => r.typeCode === 'UNPAID' && r.status === 'Approved');
+    const totalUnpaidDays = records.reduce((acc, r) => acc + (r.totalDays || 0), 0);
+    return {
+      employeeId,
+      unpaidDays: totalUnpaidDays,
+      payrollDeductionRequired: totalUnpaidDays > 0
+    };
+  } catch {
+    return { employeeId, unpaidDays: 0, payrollDeductionRequired: false };
+  }
 }

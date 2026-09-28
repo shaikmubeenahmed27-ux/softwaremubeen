@@ -27,13 +27,14 @@ export const ConfirmationModal = ({
       }}
     >
       <div
-        className="glass"
         style={{
           width: '100%',
           maxWidth: '440px',
           borderRadius: 'var(--radius-lg)',
           padding: '1.75rem',
-          boxShadow: 'var(--shadow-lg)'
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getLocalGeneratedPayslips } from './payrollService';
 
 export const COMPANY_DETAILS = {
   name: 'PayFlow HR Technologies Inc.',
@@ -9,15 +10,13 @@ export const COMPANY_DETAILS = {
   logoText: 'PayFlow HR'
 };
 
-let MOCK_PAYSLIPS = [];
-
 export async function getPayslips({ userRole = 'admin', authEmployeeId = '', month = 'All' } = {}) {
+  let records = [];
+
   try {
     const { data: dbSlips, error } = await supabase
       .from('payslips')
       .select('*, payroll_items(*, employees(*, profiles(*), departments(*), designations(*)))');
-
-    let records = [];
 
     if (!error && dbSlips && dbSlips.length > 0) {
       records = dbSlips.map((p) => ({
@@ -30,7 +29,7 @@ export async function getPayslips({ userRole = 'admin', authEmployeeId = '', mon
         payPeriod: 'Current Month',
         paymentDate: p.issue_date || new Date().toISOString().split('T')[0],
         paymentMode: 'Direct Bank Transfer',
-        bankName: 'Commercial Bank',
+        bankName: 'Federal Trust Bank',
         accountNumber: '**** **** 8888',
         earnings: { basic: parseFloat(p.net_pay) || 0, hra: 0, conveyance: 0, medical: 0, special: 0, bonus: 0, overtime: 0 },
         deductions: { pf: 0, pt: 0, tds: 0, loan: 0, leave: 0, other: 0 },
@@ -38,28 +37,31 @@ export async function getPayslips({ userRole = 'admin', authEmployeeId = '', mon
         totalDeductions: 0,
         netSalary: parseFloat(p.net_pay) || 0
       }));
-    } else {
-      records = MOCK_PAYSLIPS;
     }
-
-    // Role Security Enforcement: Employee can ONLY access self payslips
-    if (userRole === 'employee' && authEmployeeId) {
-      records = records.filter((r) => r.empId === authEmployeeId);
-    }
-
-    if (month !== 'All') {
-      records = records.filter((r) => r.payPeriod.includes(month));
-    }
-
-    return records;
   } catch (err) {
-    console.error('Error fetching payslips:', err);
-    return MOCK_PAYSLIPS;
+    console.warn('Error fetching payslips from Supabase:', err);
   }
+
+  // Merge with locally generated payslips from processed payroll batches
+  const localSlips = getLocalGeneratedPayslips();
+  const dbIds = new Set(records.map((r) => r.id));
+  records = [...records, ...localSlips.filter((l) => !dbIds.has(l.id))];
+
+  // Role Security Enforcement: Employee can ONLY access self payslips
+  if (userRole === 'employee' && authEmployeeId) {
+    records = records.filter((r) => r.empId === authEmployeeId);
+  }
+
+  if (month !== 'All') {
+    records = records.filter((r) => (r.payPeriod || '').includes(month));
+  }
+
+  return records;
 }
 
 export async function getPayslipDetails(payslipId) {
-  const slip = MOCK_PAYSLIPS.find((p) => p.id === payslipId) || null;
+  const slips = await getPayslips({ userRole: 'admin' });
+  const slip = slips.find((p) => p.id === payslipId) || null;
   return {
     company: COMPANY_DETAILS,
     payslip: slip
