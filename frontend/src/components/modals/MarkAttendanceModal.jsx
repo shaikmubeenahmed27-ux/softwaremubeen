@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Clock, CheckCircle2 } from 'lucide-react';
+import { getEmployees } from '../../services/employeeService';
 
 export const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }) => {
-  const [employee, setEmployee] = useState('EMP-103 - Elena Rostova');
+  const [employeeList, setEmployeeList] = useState([]);
+  const [employee, setEmployee] = useState('');
   const [status, setStatus] = useState('present');
   const [time, setTime] = useState('09:00 AM');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmployees({ pageSize: 100 }).then((res) => {
+        if (res?.data && res.data.length > 0) {
+          setEmployeeList(res.data);
+          setEmployee(`${res.data[0].id} - ${res.data[0].fullName}`);
+        }
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -61,7 +74,7 @@ export const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }) => {
           <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: '#10b981' }}>
             <CheckCircle2 size={42} style={{ margin: '0 auto 0.75rem auto' }} />
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Attendance Marked!</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Status recorded for {employee}.</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Status recorded for {employee || 'employee'}.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -82,10 +95,15 @@ export const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }) => {
                   outline: 'none'
                 }}
               >
-                <option value="EMP-101 - Sarah Jenkins">EMP-101 - Sarah Jenkins</option>
-                <option value="EMP-102 - Marcus Vance">EMP-102 - Marcus Vance</option>
-                <option value="EMP-103 - Elena Rostova">EMP-103 - Elena Rostova</option>
-                <option value="EMP-104 - David Miller">EMP-104 - David Miller</option>
+                {employeeList.length === 0 ? (
+                  <option value="">No employees found</option>
+                ) : (
+                  employeeList.map((emp) => (
+                    <option key={emp.id} value={`${emp.id} - ${emp.fullName}`}>
+                      {emp.id} - {emp.fullName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

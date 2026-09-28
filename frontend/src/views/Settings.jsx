@@ -21,8 +21,8 @@ export const SettingsView = () => {
     overtimeMultiplier: 1.5,
 
     // 3. Admin Profile (Read-only / Editable Contact)
-    adminName: currentUser.name || 'Sarah Jenkins',
-    adminEmail: currentUser.email || 'admin@payflow.hr'
+    adminName: currentUser?.name || 'Administrator',
+    adminEmail: currentUser?.email || 'admin@company.com'
   });
 
   const handleSave = (e) => {

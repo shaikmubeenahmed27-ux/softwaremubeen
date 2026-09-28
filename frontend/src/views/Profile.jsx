@@ -9,10 +9,10 @@ export const ProfileView = () => {
 
   // Editable personal info state
   const [personalInfo, setPersonalInfo] = useState({
-    phone: '+1 (555) 234-5678',
-    personalEmail: currentUser.email || 'elena.rostova@personalmail.com',
-    address: '742 Evergreen Terrace, San Francisco, CA 94107',
-    emergencyContact: 'Michael Rostova (+1 555-987-6543)'
+    phone: '+1 (555) 000-0000',
+    personalEmail: currentUser?.email || '',
+    address: 'City, State, Country',
+    emergencyContact: 'Emergency Contact (+1 555-000-0000)'
   });
 
   const handleSave = (e) => {
@@ -42,7 +42,9 @@ export const ProfileView = () => {
       {/* Main Profile Summary Header Card */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
         <img
-          src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+          src={currentUser.avatar && !currentUser.avatar.includes('photo-1534528741775') && !currentUser.avatar.includes('photo-1494790108377')
+            ? currentUser.avatar
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'User')}&background=3b82f6&color=fff&bold=true`}
           alt={currentUser.name}
           style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary-500)' }}
         />

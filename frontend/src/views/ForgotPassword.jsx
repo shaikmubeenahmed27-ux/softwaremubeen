@@ -89,7 +89,7 @@ export const ForgotPasswordView = () => {
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>Reset Password</h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Enter your work email address to receive password recovery instructions.
+            Enter your email address to receive password recovery instructions.
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export const ForgotPasswordView = () => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-              Work Email Address
+              Email Address
             </label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Mail size={18} style={{ position: 'absolute', left: '12px', color: 'var(--slate-400)' }} />
@@ -117,7 +117,7 @@ export const ForgotPasswordView = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="name@payflow.hr"
+                placeholder="e.g. yourname@gmail.com"
                 style={{
                   width: '100%',
                   padding: '0.65rem 0.875rem 0.65rem 2.4rem',

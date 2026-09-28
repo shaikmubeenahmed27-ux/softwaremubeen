@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, Building2, CheckCircle2, Shield } from 'lucide-react';
+import { X, Printer, Download, Building2, Shield, CheckCircle2 } from 'lucide-react';
 import { COMPANY_DETAILS } from '../../services/payslipService';
 
 export const PayslipModal = ({ isOpen, payslip, onClose }) => {
-  if (!isOpen || !payslip) return null;
-
   const printableRef = useRef();
+
+  if (!isOpen || !payslip) return null;
 
   const handlePrint = () => {
     window.print();
@@ -15,6 +15,32 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
     window.print();
   };
 
+  const fmt = (val) => {
+    const num = parseFloat(val) || 0;
+    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const earnings = payslip.earnings || {};
+  const deductions = payslip.deductions || {};
+
+  const basic = earnings.basic || 0;
+  const hra = earnings.hra || (earnings.allowances ? earnings.allowances * 0.4 : 0);
+  const conveyance = earnings.conveyance || (earnings.allowances ? earnings.allowances * 0.2 : 0);
+  const medical = earnings.medical || (earnings.allowances ? earnings.allowances * 0.15 : 0);
+  const special = earnings.special || (earnings.allowances ? earnings.allowances * 0.25 : 0);
+  const bonus = earnings.bonus || 0;
+  const overtime = earnings.overtime || 0;
+
+  const pf = deductions.pf || (deductions.standard ? deductions.standard * 0.4 : 0);
+  const pt = deductions.pt || (deductions.standard ? deductions.standard * 0.15 : 0);
+  const tds = deductions.tds || (deductions.standard ? deductions.standard * 0.45 : 0);
+  const loan = deductions.loan || 0;
+  const unpaidLeave = deductions.unpaidLeave || deductions.leave || 0;
+
+  const grossSalary = payslip.grossSalary || (basic + hra + conveyance + medical + special + bonus + overtime);
+  const totalDeductions = payslip.totalDeductions || (pf + pt + tds + loan + unpaidLeave);
+  const netSalary = payslip.netSalary || (grossSalary - totalDeductions);
+
   return (
     <div
       style={{
@@ -22,7 +48,7 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
         inset: 0,
         backgroundColor: 'rgba(2, 6, 23, 0.85)',
         backdropFilter: 'blur(8px)',
-        zIndex: 1000,
+        zIndex: 1050,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -36,7 +62,7 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
           maxWidth: '820px',
           maxHeight: '92vh',
           overflowY: 'auto',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: '16px',
           background: '#ffffff',
           color: '#0f172a',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
@@ -49,16 +75,16 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
           className="no-print"
           style={{
             padding: '1rem 1.5rem',
-            background: 'var(--bg-card)',
-            color: 'var(--text-main)',
-            borderBottom: '1px solid var(--border-color)',
+            background: '#f8fafc',
+            color: '#0f172a',
+            borderBottom: '1px solid #e2e8f0',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1.1rem' }}>
-            <Building2 size={20} style={{ color: 'var(--primary-400)' }} /> Payslip Statement Document - {payslip.id}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '1.1rem' }}>
+            <Building2 size={20} style={{ color: '#2563eb' }} /> Payslip Statement Document — {payslip.id}
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -106,7 +132,7 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
                 Statement ID: {payslip.id}
               </div>
               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                Payment Date: {payslip.paymentDate}
+                Payment Date: {payslip.paymentDate || 'Current Cycle'}
               </div>
             </div>
           </div>
@@ -142,11 +168,11 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Pay Period:</span>
                 <span>{payslip.payPeriod}</span>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Payment Mode:</span>
-                <span>{payslip.paymentMode}</span>
+                <span>{payslip.paymentMode || 'Direct Bank Transfer'}</span>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Bank Name:</span>
-                <span>{payslip.bankName}</span>
+                <span>{payslip.bankName || 'Federal Trust Bank'}</span>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Account No:</span>
-                <span style={{ fontFamily: 'monospace' }}>{payslip.accountNumber}</span>
+                <span style={{ fontFamily: 'monospace' }}>{payslip.accountNumber || '**** **** 8888'}</span>
               </div>
             </div>
           </div>
@@ -174,27 +200,27 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
                     <tbody>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Basic Salary</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${payslip.earnings.basic.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(basic)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>HRA Allowance</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${payslip.earnings.hra.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(hra)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Conveyance Allowance</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${payslip.earnings.conveyance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Conveyance / Travel</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(conveyance)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Medical Allowance</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${payslip.earnings.medical.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(medical)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Special Allowance</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${payslip.earnings.special.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(special)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Bonus & Overtime Pay</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>\${(payslip.earnings.bonus + payslip.earnings.overtime).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Overtime & Bonuses</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600 }}>{fmt(bonus + overtime)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -206,23 +232,23 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
                     <tbody>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Provident Fund (PF)</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-\${payslip.deductions.pf.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{fmt(pf)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Professional Tax (PT)</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-\${payslip.deductions.pt.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{fmt(pt)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>TDS / Income Tax</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-\${payslip.deductions.tds.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{fmt(tds)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Loan Repayment</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-\${payslip.deductions.loan.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{fmt(loan)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#334155' }}>Unpaid Leave Deduction</td>
-                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-\${payslip.deductions.leave.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>-{fmt(unpaidLeave)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -234,13 +260,13 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
                 <td style={{ padding: '0.75rem 1rem', borderRight: '1px solid #cbd5e1' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Gross Salary (A):</span>
-                    <span style={{ color: '#0f172a', fontSize: '0.95rem' }}>\${payslip.grossSalary.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    <span style={{ color: '#0f172a', fontSize: '0.95rem' }}>{fmt(grossSalary)}</span>
                   </div>
                 </td>
                 <td style={{ padding: '0.75rem 1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Total Deductions (B):</span>
-                    <span style={{ color: '#dc2626', fontSize: '0.95rem' }}>-\${payslip.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    <span style={{ color: '#dc2626', fontSize: '0.95rem' }}>-{fmt(totalDeductions)}</span>
                   </div>
                 </td>
               </tr>
@@ -250,41 +276,43 @@ export const PayslipModal = ({ isOpen, payslip, onClose }) => {
           {/* Net Salary Take-Home Banner */}
           <div
             style={{
-              padding: '1.25rem 1.5rem',
-              background: '#0f172a',
-              color: '#ffffff',
+              padding: '1rem 1.5rem',
+              background: '#ecfdf5',
+              border: '2px solid #10b981',
               borderRadius: '8px',
               display: 'flex',
-              justify: 'space-between',
+              justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '2rem'
             }}
           >
             <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>
-                Net Monthly Disbursable Salary (A - B)
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Net Disbursed Take-Home Pay (A - B)
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#4ade80', marginTop: '0.15rem' }}>
-                \${payslip.netSalary.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              <div style={{ fontSize: '0.8rem', color: '#065f46', marginTop: '0.15rem' }}>
+                Direct electronic credit transfer completed to registered bank account.
               </div>
             </div>
-            <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#94a3b8', textAlign: 'right' }}>
-              Status: <strong style={{ color: '#4ade80' }}>Disbursed & Paid</strong>
+
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#047857' }}>
+              {fmt(netSalary)}
             </div>
           </div>
 
-          {/* Signatures & Footer */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4rem', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px dashed #cbd5e1' }}>
+          {/* Signatures & Footer Note */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px dashed #cbd5e1' }}>
             <div>
-              <div style={{ height: '40px', borderBottom: '1px solid #94a3b8', marginBottom: '0.35rem' }}></div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Employer / Authorized Officer Signature</div>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>PayFlow HR Operations Department</div>
+              <div style={{ width: '180px', borderBottom: '1px solid #0f172a', marginBottom: '0.35rem' }}></div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Employee Signature</div>
             </div>
 
-            <div>
-              <div style={{ height: '40px', borderBottom: '1px solid #94a3b8', marginBottom: '0.35rem' }}></div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Employee Acknowledgment Signature</div>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>This document is a computer-generated official pay statement.</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                <CheckCircle2 size={15} /> Digitally Certified by HR
+              </div>
+              <div style={{ width: '180px', borderBottom: '1px solid #0f172a', marginBottom: '0.35rem', marginLeft: 'auto' }}></div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Authorized Payroll Officer</div>
             </div>
           </div>
         </div>

@@ -91,7 +91,7 @@ const MainContent = () => {
         );
       case 'reports':
         return (
-          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
             <ReportsView />
           </ProtectedRoute>
         );

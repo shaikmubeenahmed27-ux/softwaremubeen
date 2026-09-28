@@ -1,43 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, Calculator, CheckCircle2 } from 'lucide-react';
 import { calculateShiftHours } from '../../services/attendanceService';
+import { getEmployees } from '../../services/employeeService';
 
 export const AttendanceFormModal = ({ isOpen, initialData = null, onClose, onSubmit }) => {
   const isEdit = Boolean(initialData);
+  const [employeeList, setEmployeeList] = useState([]);
 
   const [formData, setFormData] = useState({
-    empId: 'EMP-103',
-    empName: 'Elena Rostova',
-    date: '2026-09-01',
-    checkIn: '08:30 AM',
-    checkOut: '05:30 PM',
+    empId: '',
+    employeeDbId: '',
+    empName: '',
+    department: '',
+    date: new Date().toISOString().split('T')[0],
+    checkIn: '09:00 AM',
+    checkOut: '05:00 PM',
     status: 'Present',
     remarks: ''
   });
 
-  const [computed, setComputed] = useState({ workHours: 8.0, overtimeHours: 1.0 });
+  const [computed, setComputed] = useState({ workHours: 8.0, overtimeHours: 0.0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmployees({ pageSize: 100 }).then((res) => {
+        if (res?.data && res.data.length > 0) {
+          setEmployeeList(res.data);
+          if (!initialData && !formData.empId) {
+            setFormData((prev) => ({
+              ...prev,
+              empId: res.data[0].id,
+              employeeDbId: res.data[0].dbId || res.data[0].id,
+              empName: res.data[0].fullName,
+              department: res.data[0].department || 'General'
+            }));
+          }
+        }
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (initialData) {
       setFormData({
-        empId: initialData.empId || 'EMP-103',
-        empName: initialData.empName || 'Elena Rostova',
-        date: initialData.date || '2026-09-01',
-        checkIn: initialData.checkIn || '08:30 AM',
-        checkOut: initialData.checkOut || '05:30 PM',
+        empId: initialData.empId || '',
+        empName: initialData.empName || '',
+        date: initialData.date || new Date().toISOString().split('T')[0],
+        checkIn: initialData.checkIn || '09:00 AM',
+        checkOut: initialData.checkOut || '05:00 PM',
         status: initialData.status || 'Present',
         remarks: initialData.remarks || ''
-      });
-    } else {
-      setFormData({
-        empId: 'EMP-103',
-        empName: 'Elena Rostova',
-        date: '2026-09-01',
-        checkIn: '08:30 AM',
-        checkOut: '05:30 PM',
-        status: 'Present',
-        remarks: ''
       });
     }
   }, [initialData, isOpen]);
@@ -113,7 +126,16 @@ export const AttendanceFormModal = ({ isOpen, initialData = null, onClose, onSub
               </label>
               <select
                 value={formData.empId}
-                onChange={(e) => setFormData({ ...formData, empId: e.target.value })}
+                onChange={(e) => {
+                  const selectedEmp = employeeList.find((emp) => emp.id === e.target.value);
+                  setFormData({
+                    ...formData,
+                    empId: e.target.value,
+                    employeeDbId: selectedEmp?.dbId || e.target.value,
+                    empName: selectedEmp?.fullName || '',
+                    department: selectedEmp?.department || 'General'
+                  });
+                }}
                 disabled={isEdit}
                 style={{
                   width: '100%',
@@ -125,12 +147,15 @@ export const AttendanceFormModal = ({ isOpen, initialData = null, onClose, onSub
                   outline: 'none'
                 }}
               >
-                <option value="EMP-101">EMP-101 - Sarah Jenkins</option>
-                <option value="EMP-102">EMP-102 - Marcus Vance</option>
-                <option value="EMP-103">EMP-103 - Elena Rostova</option>
-                <option value="EMP-104">EMP-104 - David Miller</option>
-                <option value="EMP-105">EMP-105 - Sophia Chen</option>
-                <option value="EMP-106">EMP-106 - James Wilson</option>
+                {employeeList.length === 0 ? (
+                  <option value="">No employees found</option>
+                ) : (
+                  employeeList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.id} - {emp.fullName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

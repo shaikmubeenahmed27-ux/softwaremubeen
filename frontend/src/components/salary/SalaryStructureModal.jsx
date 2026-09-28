@@ -1,62 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Calculator, CheckCircle2 } from 'lucide-react';
 import { calculateSalaryTotals } from '../../services/salaryService';
+import { getEmployees } from '../../services/employeeService';
 
 export const SalaryStructureModal = ({ isOpen, initialData = null, onClose, onSubmit }) => {
   const isEdit = Boolean(initialData);
+  const [employeeList, setEmployeeList] = useState([]);
 
   const [formData, setFormData] = useState({
-    empId: 'EMP-103',
-    empName: 'Elena Rostova',
+    empId: '',
+    empName: '',
     payFrequency: 'Monthly',
     effectiveDate: new Date().toISOString().split('T')[0],
 
     // 7 Configurable Earnings
     earnings: {
-      basic: 6500,
-      hra: 1500,
-      conveyance: 500,
-      medical: 400,
-      special: 1200,
-      bonus: 500,
-      overtime: 250
+      basic: 5000,
+      hra: 1200,
+      conveyance: 400,
+      medical: 300,
+      special: 800,
+      bonus: 0,
+      overtime: 0
     },
 
     // 6 Configurable Deductions
     deductions: {
-      pf: 520,
+      pf: 400,
       pt: 150,
-      tds: 650,
-      loan: 200,
+      tds: 450,
+      loan: 0,
       leave: 0,
       other: 0
     }
   });
 
-  const [totals, setTotals] = useState({ grossSalary: 10850, totalDeductions: 1520, netSalary: 9330 });
+  const [totals, setTotals] = useState({ grossSalary: 7700, totalDeductions: 1000, netSalary: 6700 });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmployees({ pageSize: 100 }).then((res) => {
+        if (res?.data && res.data.length > 0) {
+          setEmployeeList(res.data);
+          if (!initialData && !formData.empId) {
+            setFormData((prev) => ({
+              ...prev,
+              empId: res.data[0].id,
+              empName: res.data[0].fullName
+            }));
+          }
+        }
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (initialData) {
       setFormData({
-        empId: initialData.empId || 'EMP-103',
-        empName: initialData.empName || 'Elena Rostova',
+        empId: initialData.empId || '',
+        empName: initialData.empName || '',
         payFrequency: initialData.payFrequency || 'Monthly',
         effectiveDate: initialData.effectiveDate || new Date().toISOString().split('T')[0],
         earnings: {
-          basic: initialData.earnings?.basic || 6500,
-          hra: initialData.earnings?.hra || 1500,
-          conveyance: initialData.earnings?.conveyance || 500,
-          medical: initialData.earnings?.medical || 400,
-          special: initialData.earnings?.special || 1200,
-          bonus: initialData.earnings?.bonus || 500,
-          overtime: initialData.earnings?.overtime || 250
+          basic: initialData.earnings?.basic || 5000,
+          hra: initialData.earnings?.hra || 1200,
+          conveyance: initialData.earnings?.conveyance || 400,
+          medical: initialData.earnings?.medical || 300,
+          special: initialData.earnings?.special || 800,
+          bonus: initialData.earnings?.bonus || 0,
+          overtime: initialData.earnings?.overtime || 0
         },
         deductions: {
-          pf: initialData.deductions?.pf || 520,
+          pf: initialData.deductions?.pf || 400,
           pt: initialData.deductions?.pt || 150,
-          tds: initialData.deductions?.tds || 650,
-          loan: initialData.deductions?.loan || 200,
+          tds: initialData.deductions?.tds || 450,
+          loan: initialData.deductions?.loan || 0,
           leave: initialData.deductions?.leave || 0,
           other: initialData.deductions?.other || 0
         }
@@ -180,7 +199,16 @@ export const SalaryStructureModal = ({ isOpen, initialData = null, onClose, onSu
               </label>
               <select
                 value={formData.empId}
-                onChange={(e) => setFormData({ ...formData, empId: e.target.value })}
+                onChange={(e) => {
+                  const selectedEmp = employeeList.find((emp) => emp.id === e.target.value || emp.dbId === e.target.value);
+                  setFormData({
+                    ...formData,
+                    empId: e.target.value,
+                    empName: selectedEmp?.fullName || selectedEmp?.name || '',
+                    department: selectedEmp?.department || 'General',
+                    designation: selectedEmp?.designation || 'Team Member'
+                  });
+                }}
                 disabled={isEdit}
                 style={{
                   width: '100%',
@@ -192,10 +220,15 @@ export const SalaryStructureModal = ({ isOpen, initialData = null, onClose, onSu
                   outline: 'none'
                 }}
               >
-                <option value="EMP-101">EMP-101 - Sarah Jenkins</option>
-                <option value="EMP-102">EMP-102 - Marcus Vance</option>
-                <option value="EMP-103">EMP-103 - Elena Rostova</option>
-                <option value="EMP-104">EMP-104 - David Miller</option>
+                {employeeList.length === 0 ? (
+                  <option value="">No employees found</option>
+                ) : (
+                  employeeList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.id} - {emp.fullName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

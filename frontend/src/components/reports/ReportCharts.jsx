@@ -1,44 +1,80 @@
 import React from 'react';
 
-export const ReportCharts = ({ reportType = 'employee' }) => {
+export const ReportCharts = ({ reportType = 'payroll', rows = [] }) => {
   const getChartData = () => {
+    if (!rows || rows.length === 0) {
+      return [
+        { label: 'Awaiting Records', value: '0', percentage: 0, color: 'var(--text-muted)' }
+      ];
+    }
+
+    const palette = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899'];
+
     switch (reportType) {
-      case 'employee':
-        return [
-          { label: 'Engineering & Tech', value: 43, percentage: 43, color: '#3b82f6' },
-          { label: 'Sales & Marketing', value: 26, percentage: 26, color: '#10b981' },
-          { label: 'Finance & Accounting', value: 15, percentage: 15, color: '#a855f7' },
-          { label: 'Product & Design', value: 12, percentage: 12, color: '#f59e0b' },
-          { label: 'Human Resources', value: 4, percentage: 4, color: '#ef4444' }
-        ];
+      case 'employee': {
+        const deptCounts = {};
+        rows.forEach((r) => {
+          const d = r.department || 'General';
+          deptCounts[d] = (deptCounts[d] || 0) + 1;
+        });
+        const total = rows.length || 1;
+        return Object.entries(deptCounts).map(([label, count], idx) => ({
+          label,
+          value: `${count} Staff`,
+          percentage: Math.round((count / total) * 100),
+          color: palette[idx % palette.length]
+        }));
+      }
 
-      case 'attendance':
-        return [
-          { label: 'On-Time Present', value: 94, percentage: 94, color: '#10b981' },
-          { label: 'Late Punch In', value: 3.5, percentage: 3.5, color: '#f59e0b' },
-          { label: 'Half Day', value: 1.5, percentage: 1.5, color: '#3b82f6' },
-          { label: 'Unexcused Absent', value: 1.0, percentage: 1.0, color: '#ef4444' }
-        ];
+      case 'attendance': {
+        const statusCounts = {};
+        rows.forEach((r) => {
+          const s = r.attendanceStatus || 'Present';
+          statusCounts[s] = (statusCounts[s] || 0) + 1;
+        });
+        const total = rows.length || 1;
+        return Object.entries(statusCounts).map(([label, count], idx) => ({
+          label,
+          value: `${count} Logs`,
+          percentage: Math.round((count / total) * 100),
+          color: label.toLowerCase().includes('present') ? '#10b981' : label.toLowerCase().includes('late') ? '#f59e0b' : '#ef4444'
+        }));
+      }
 
-      case 'leave':
-        return [
-          { label: 'Earned Leave Utilization', value: 45, percentage: 45, color: '#10b981' },
-          { label: 'Casual Leave Utilization', value: 32, percentage: 32, color: '#3b82f6' },
-          { label: 'Sick Leave Utilization', value: 18, percentage: 18, color: '#a855f7' },
-          { label: 'Unpaid Leave Days', value: 5, percentage: 5, color: '#ef4444' }
-        ];
+      case 'leave': {
+        const catCounts = {};
+        rows.forEach((r) => {
+          const c = r.leaveCategory || 'Leave';
+          catCounts[c] = (catCounts[c] || 0) + 1;
+        });
+        const total = rows.length || 1;
+        return Object.entries(catCounts).map(([label, count], idx) => ({
+          label,
+          value: `${count} Requests`,
+          percentage: Math.round((count / total) * 100),
+          color: palette[idx % palette.length]
+        }));
+      }
 
       case 'payroll':
-      case 'department':
-      case 'overtime':
-      default:
-        return [
-          { label: 'Engineering & Tech', value: 48, percentage: 48, color: '#3b82f6' },
-          { label: 'Executive Leadership', value: 18, percentage: 18, color: '#a855f7' },
-          { label: 'Finance & Accounting', value: 14, percentage: 14, color: '#10b981' },
-          { label: 'Product & Design', value: 12, percentage: 12, color: '#f59e0b' },
-          { label: 'Sales & Marketing', value: 8, percentage: 8, color: '#64748b' }
-        ];
+      default: {
+        const deptGross = {};
+        let totalSum = 0;
+        rows.forEach((r) => {
+          const d = r.department || 'General';
+          const grossNum = parseFloat(String(r.grossSalary || r.grossTotal || '0').replace(/[^0-9.-]/g, '')) || 0;
+          deptGross[d] = (deptGross[d] || 0) + grossNum;
+          totalSum += grossNum;
+        });
+        if (totalSum === 0) totalSum = 1;
+
+        return Object.entries(deptGross).map(([label, gross], idx) => ({
+          label,
+          value: `$${Math.round(gross).toLocaleString()}`,
+          percentage: Math.round((gross / totalSum) * 100),
+          color: palette[idx % palette.length]
+        }));
+      }
     }
   };
 

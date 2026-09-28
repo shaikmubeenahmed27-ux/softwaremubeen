@@ -13,14 +13,12 @@ import {
   Search,
   Filter,
   Eye,
-  Printer,
-  Download,
-  Building2,
-  Calendar
+  Inbox,
+  ArrowRight
 } from 'lucide-react';
 
 export const PayslipsView = () => {
-  const { currentRole, currentUser } = useAuth();
+  const { currentRole, currentUser, navigateTo } = useAuth();
 
   const [payslips, setPayslips] = useState([]);
   const [search, setSearch] = useState('');
@@ -35,7 +33,7 @@ export const PayslipsView = () => {
     setLoading(true);
     const list = await getPayslips({
       userRole: currentRole,
-      authEmployeeId: currentUser.id,
+      authEmployeeId: currentUser?.id,
       month: monthFilter
     });
     setPayslips(list);
@@ -48,13 +46,13 @@ export const PayslipsView = () => {
 
   const filteredSlips = payslips.filter(
     (p) =>
-      p.empName.toLowerCase().includes(search.toLowerCase()) ||
-      p.empId.toLowerCase().includes(search.toLowerCase()) ||
-      p.id.toLowerCase().includes(search.toLowerCase())
+      (p.empName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.empId || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.id || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
       {/* Page Header */}
       <div className="page-header">
         <div className="page-title-group">
@@ -102,19 +100,48 @@ export const PayslipsView = () => {
               border: '1px solid var(--border-color)',
               color: 'var(--text-main)',
               fontSize: '0.825rem',
-              outline: 'none'
+              outline: 'none',
+              cursor: 'pointer'
             }}
           >
             <option value="All">All Months</option>
-            <option value="August">August 2026</option>
-            <option value="July">July 2026</option>
+            <option value="September 2026">September 2026</option>
+            <option value="August 2026">August 2026</option>
+            <option value="October 2026">October 2026</option>
           </select>
         </div>
       </div>
 
-      {/* Data Table */}
+      {/* Data Table / Empty State */}
       {loading ? (
         <LoadingSpinner size={36} label="Loading issued payslips..." />
+      ) : filteredSlips.length === 0 ? (
+        <div className="card" style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            background: 'var(--bg-app)',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1rem'
+          }}>
+            <Inbox size={24} />
+          </div>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            No Payslips Generated Yet
+          </h3>
+          <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Payslips are automatically generated and published when you approve and disburse a payroll cycle on the Payroll page.
+          </p>
+          {currentRole === 'admin' && (
+            <button className="btn btn-primary" onClick={() => navigateTo('payroll')} style={{ margin: '0 auto' }}>
+              Go to Payroll Engine <ArrowRight size={15} />
+            </button>
+          )}
+        </div>
       ) : (
         <div className="data-table-container">
           <table className="data-table">
@@ -139,8 +166,8 @@ export const PayslipsView = () => {
                   <td><Badge variant="info">{p.department}</Badge></td>
                   <td>{p.payPeriod}</td>
                   <td>{p.paymentDate}</td>
-                  <td>\${p.grossSalary.toLocaleString()}</td>
-                  <td style={{ fontWeight: 800, color: '#10b981' }}>\${p.netSalary.toLocaleString()}</td>
+                  <td>${(p.grossSalary || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ fontWeight: 800, color: '#10b981' }}>${(p.netSalary || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                   <td><Badge variant="success" dot>Disbursed</Badge></td>
                   <td style={{ textAlign: 'right' }}>
                     <button
@@ -173,3 +200,4 @@ export const PayslipsView = () => {
     </div>
   );
 };
+export default PayslipsView;

@@ -25,6 +25,14 @@ html, body {
   flex-direction: column;
 }
 
+/* Disable native browser password reveal & clear buttons (e.g. Microsoft Edge) to prevent duplicate eye icons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -261,10 +269,16 @@ html, body {
 
 /* Glass Effect Utility */
 .glass {
-  background: rgba(30, 41, 59, 0.75);
+  background: var(--glass-bg, rgba(30, 41, 59, 0.85));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
 }
 
 /* Landing Page SaaS Utilities */
@@ -278,6 +292,7 @@ html, body {
 .gradient-text-primary {
   background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
 }
@@ -285,6 +300,7 @@ html, body {
 .gradient-text-sky {
   background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
 }

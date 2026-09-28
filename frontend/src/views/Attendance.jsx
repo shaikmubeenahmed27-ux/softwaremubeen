@@ -37,7 +37,7 @@ export const AttendanceView = () => {
   const [viewMode, setViewMode] = useState('table');
 
   // Filters
-  const [selectedDate, setSelectedDate] = useState('2026-09-01');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [empFilter, setEmpFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -62,15 +62,18 @@ export const AttendanceView = () => {
       department: deptFilter,
       status: statusFilter,
       userRole: currentRole,
-      userDept: currentUser.department,
-      authEmployeeId: currentUser.id
+      userDept: currentUser?.department,
+      authEmployeeId: currentUser?.id
     });
     setRecords(data);
 
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentYear = String(now.getFullYear());
     const sum = await getMonthlyAttendanceSummary(
-      empFilter === 'All' ? 'EMP-103' : empFilter,
-      '09',
-      '2026'
+      empFilter === 'All' ? 'All' : empFilter,
+      currentMonth,
+      currentYear
     );
     setSummary(sum);
     setLoading(false);
@@ -78,6 +81,13 @@ export const AttendanceView = () => {
 
   useEffect(() => {
     loadData();
+  }, [selectedDate, empFilter, deptFilter, statusFilter, currentRole]);
+
+  // Auto-refresh when attendance is marked from any role
+  useEffect(() => {
+    const handler = () => loadData();
+    window.addEventListener('payflow:attendance_updated', handler);
+    return () => window.removeEventListener('payflow:attendance_updated', handler);
   }, [selectedDate, empFilter, deptFilter, statusFilter, currentRole]);
 
   const handleFormSubmit = async (formData) => {
@@ -115,7 +125,7 @@ export const AttendanceView = () => {
           </p>
         </div>
         <div className="page-actions">
-          {currentRole === 'admin' && (
+          {(currentRole === 'admin' || currentRole === 'manager') && (
             <button
               className="btn btn-primary"
               onClick={() => {
@@ -328,11 +338,20 @@ export const AttendanceView = () => {
                 <th>Overtime</th>
                 <th>Status</th>
                 <th>Remarks / Shift Notes</th>
-                {currentRole === 'admin' && <th style={{ textAlign: 'right' }}>Actions</th>}
+                {(currentRole === 'admin' || currentRole === 'manager') && <th style={{ textAlign: 'right' }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {records.map((rec) => (
+              {records.length === 0 ? (
+                <tr>
+                  <td colSpan={currentRole === 'admin' ? 11 : 10} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                    <Clock size={32} style={{ opacity: 0.3, marginBottom: '0.5rem', display: 'block', margin: '0 auto 0.5rem' }} />
+                    {currentRole === 'manager'
+                      ? `No attendance records found for ${currentUser.department} team on this date. Records will appear here once your team clocks in.`
+                      : 'No attendance records found for the selected filters.'}
+                  </td>
+                </tr>
+              ) : records.map((rec) => (
                 <tr key={rec.id}>
                   <td>{rec.date}</td>
                   <td style={{ fontWeight: 600, color: 'var(--primary-400)', fontFamily: 'monospace' }}>{rec.empId}</td>
@@ -348,7 +367,7 @@ export const AttendanceView = () => {
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {rec.remarks || 'Standard shift'}
                   </td>
-                  {currentRole === 'admin' && (
+                  {(currentRole === 'admin' || currentRole === 'manager') && (
                     <td style={{ textAlign: 'right' }}>
                       <button
                         className="btn-icon"
