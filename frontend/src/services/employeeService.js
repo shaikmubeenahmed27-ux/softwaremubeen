@@ -137,16 +137,60 @@ export async function getEmployeeById(id) {
   return found || null;
 }
 
+import { createClient } from '@supabase/supabase-js';
+
+// Isolated secondary Supabase client instance with persistSession: false
+// Ensures creating a new Auth user NEVER touches or overwrites the active Admin's session!
+const tempAuthClient = createClient(
+  import.meta.env.VITE_SUPABASE_URL || 'https://fqjzhxjnawuhfyaivegk.supabase.co',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_pTq8Z69iLGGMcGdF5YZn_w_mwkvWubA',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
+
 export async function createEmployee(newEmployeeData) {
   const newCode = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
-  const email = (newEmployeeData.email || '').trim();
+  const email = (newEmployeeData.email || '').trim().toLowerCase();
   const firstName = newEmployeeData.firstName?.trim() || '';
   const lastName = newEmployeeData.lastName?.trim() || '';
   const fullName = `${firstName} ${lastName}`.trim() || 'Team Member';
   const requestedDept = newEmployeeData.department || 'Engineering & Tech';
   const requestedDesig = newEmployeeData.designation || 'Team Member';
+  const rawPassword = newEmployeeData.password?.trim() || `Pass@${Math.floor(100000 + Math.random() * 900000)}`;
+
+  if (!email) throw new Error('Employee email address is required.');
 
   try {
+    // 0. Duplicate check: verify email doesn't already exist in employees or profiles table
+    try {
+      const { data: existingEmp } = await supabase
+        .from('employees')
+        .select('id, email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingEmp) {
+        throw new Error(`An employee account with email '${email}' already exists.`);
+      }
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingProfile) {
+        throw new Error(`A user profile with email '${email}' already exists.`);
+      }
+    } catch (dupErr) {
+      if (dupErr.message.includes('already exists')) throw dupErr;
+    }
+
     // 1. Resolve Department ID if selected (or create department if missing)
     let deptId = null;
     try {
@@ -203,24 +247,32 @@ export async function createEmployee(newEmployeeData) {
       console.warn('Could not resolve/create designation:', desErr);
     }
 
-    // 3. Resolve profile ID if this email already exists in profiles
-    let profileId = null;
-    if (email) {
-      try {
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .maybeSingle();
-        if (existingProfile?.id) profileId = existingProfile.id;
-      } catch (pErr) {
-        console.warn('Profile lookup warning:', pErr);
+    // 3. Create Supabase Auth Account using isolated client (role = 'employee')
+    const { data: authData, error: authError } = await tempAuthClient.auth.signUp({
+      email: email,
+      password: rawPassword,
+      options: {
+        data: {
+          full_name: fullName,
+          role: 'employee',
+          department: requestedDept,
+          designation: requestedDesig
+        }
       }
+    });
+
+    if (authError) {
+      throw new Error(`Supabase Auth account creation failed: ${authError.message}`);
     }
 
-    // 4. Insert into Supabase `employees` table
+    const authUserId = authData?.user?.id;
+    if (!authUserId) {
+      throw new Error('Supabase Auth user creation returned no user ID.');
+    }
+
+    // 4. Insert into Supabase `employees` table linked with profile_id = authUserId
     const empPayload = {
-      profile_id: profileId,
+      profile_id: authUserId,
       employee_code: newCode,
       first_name: firstName,
       last_name: lastName,
@@ -237,7 +289,7 @@ export async function createEmployee(newEmployeeData) {
       .from('employees')
       .insert([empPayload])
       .select('*, departments(*), designations(*), profiles(*)')
-      .single();
+      .maybeSingle();
 
     if (empErr) {
       console.error('Supabase employee insert error:', empErr);
@@ -245,28 +297,9 @@ export async function createEmployee(newEmployeeData) {
     }
 
     const record = {
-      id: insertedEmp.employee_code || insertedEmp.id,
-      dbId: insertedEmp.id,
-      firstName: insertedEmp.first_name || firstName,
-      lastName: insertedEmp.last_name || lastName,
-      fullName: `${insertedEmp.first_name || ''} ${insertedEmp.last_name || ''}`.trim() || fullName,
-      email: insertedEmp.email || email,
-      department: insertedEmp.departments?.name || requestedDept,
-      designation: insertedEmp.designations?.title || requestedDesig,
-      joiningDate: insertedEmp.joining_date,
-      employmentType: insertedEmp.employment_type,
-      status: insertedEmp.status
-    };
-
-    saveLocalEmployees([record, ...getLocalEmployees().filter((e) => e.id !== record.id)]);
-    try { window.dispatchEvent(new Event('payflow:employees_updated')); } catch {}
-    return { success: true, data: record };
-  } catch (err) {
-    console.error('Failed to insert employee into Supabase:', err);
-
-    const record = {
-      id: newCode,
-      dbId: `db_${Date.now()}`,
+      id: insertedEmp?.employee_code || newCode,
+      dbId: insertedEmp?.id || authUserId,
+      profileId: authUserId,
       firstName: firstName,
       lastName: lastName,
       fullName: fullName,
@@ -277,15 +310,24 @@ export async function createEmployee(newEmployeeData) {
       employmentType: newEmployeeData.employmentType || 'Full-time',
       status: 'active'
     };
+
     saveLocalEmployees([record, ...getLocalEmployees().filter((e) => e.id !== record.id)]);
     try { window.dispatchEvent(new Event('payflow:employees_updated')); } catch {}
 
-    const isRlsOrNetwork = err?.code === '42501' || err?.message?.includes('row-level security') || !navigator.onLine;
-    if (isRlsOrNetwork) {
-      console.warn('Supabase RLS blocked insert — saved to local cache. Apply migration 06 to fix DB policies.');
-      return { success: true, data: record, warning: 'Saved locally. Please run migration 06 in Supabase SQL editor to sync with cloud database.' };
-    }
-    return { error: err, data: record };
+    return {
+      success: true,
+      data: record,
+      credentials: {
+        email: email,
+        password: rawPassword,
+        fullName: fullName,
+        role: 'Employee',
+        department: requestedDept
+      }
+    };
+  } catch (err) {
+    console.error('Failed to create employee with Auth account:', err);
+    throw err;
   }
 }
 
