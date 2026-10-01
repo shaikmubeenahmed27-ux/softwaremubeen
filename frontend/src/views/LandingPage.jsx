@@ -47,20 +47,85 @@ export const LandingPageView = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [activeShowcaseTab, setActiveShowcaseTab] = useState('payroll');
+  const [activeSection, setActiveSection] = useState('');
 
-  // Scroll handler for navbar background shadow effect
+  // Scroll handler for navbar background shadow effect and active section scrollspy
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
+      setScrolled(window.scrollY > 20);
+
+      const sectionIds = ['features', 'solutions', 'how-it-works', 'security', 'roles', 'about'];
+      const scrollPosition = window.scrollY + 140;
+
+      for (let i = sectionIds.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sectionIds[i]);
+        if (section) {
+          const top = section.offsetTop;
+          if (scrollPosition >= top) {
+            setActiveSection(sectionIds[i]);
+            return;
+          }
+        }
+      }
+      if (window.scrollY < 200) {
+        setActiveSection('');
       }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const scrollToSection = (e, targetId) => {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
+    setMobileMenuOpen(false);
+    setSolutionsOpen(false);
+
+    const elem = document.getElementById(targetId);
+    if (!elem) return;
+
+    const headerOffset = 80;
+    const elementPosition = elem.getBoundingClientRect().top;
+    const startPosition = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const targetPosition = Math.max(0, elementPosition + startPosition - headerOffset);
+    const distance = targetPosition - startPosition;
+
+    if (Math.abs(distance) < 2) return;
+
+    const duration = 650; // Smooth 650ms gliding animation
+    let startTime = null;
+
+    const easeInOutCubic = (t) => {
+      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    };
+
+    const animation = (currentTime) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const progress = Math.min(timeElapsed / duration, 1);
+      const ease = easeInOutCubic(progress);
+      const nextScroll = startPosition + distance * ease;
+
+      window.scrollTo(0, nextScroll);
+      document.documentElement.scrollTop = nextScroll;
+      document.body.scrollTop = nextScroll;
+
+      if (timeElapsed < duration) {
+        requestAnimationFrame(animation);
+      } else {
+        window.scrollTo(0, targetPosition);
+        document.documentElement.scrollTop = targetPosition;
+        document.body.scrollTop = targetPosition;
+        setActiveSection(targetId);
+      }
+    };
+
+    requestAnimationFrame(animation);
+  };
 
   return (
     <div
@@ -68,7 +133,7 @@ export const LandingPageView = () => {
         minHeight: '100vh',
         width: '100%',
         position: 'relative',
-        overflowX: 'hidden',
+        overflowX: 'clip',
         backgroundColor: isDark ? '#0b1120' : '#ffffff',
         color: isDark ? '#f8fafc' : '#0f172a',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -95,19 +160,22 @@ export const LandingPageView = () => {
         className="glow-pulse"
       />
 
-      {/* 1. STICKY NAVBAR */}
+      {/* 1. STICKY / FIXED NAVBAR */}
       <header
         style={{
-          position: 'sticky',
+          position: 'fixed',
           top: 0,
-          zIndex: 100,
+          left: 0,
+          right: 0,
+          width: '100%',
+          zIndex: 1000,
           backgroundColor: scrolled
             ? isDark
-              ? 'rgba(15, 23, 42, 0.92)'
-              : 'rgba(255, 255, 255, 0.92)'
+              ? 'rgba(15, 23, 42, 0.95)'
+              : 'rgba(255, 255, 255, 0.95)'
             : isDark
-            ? 'rgba(11, 17, 32, 0.8)'
-            : 'rgba(255, 255, 255, 0.8)',
+            ? 'rgba(11, 17, 32, 0.85)'
+            : 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderBottom: isDark ? '1px solid rgba(51, 65, 85, 0.6)' : '1px solid rgba(226, 232, 240, 0.8)',
@@ -115,7 +183,7 @@ export const LandingPageView = () => {
           boxShadow: scrolled
             ? isDark
               ? '0 10px 30px -10px rgba(0, 0, 0, 0.5)'
-              : '0 10px 30px -10px rgba(0, 0, 0, 0.05)'
+              : '0 10px 30px -10px rgba(0, 0, 0, 0.08)'
             : 'none',
           transition: 'all 0.3s ease'
         }}
@@ -132,7 +200,10 @@ export const LandingPageView = () => {
           {/* LEFT: Logo + Title + Subtitle */}
           <div
             style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'pointer' }}
-            onClick={() => navigateTo('landing')}
+            onClick={(e) => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setActiveSection('');
+            }}
           >
             <div
               style={{
@@ -173,7 +244,20 @@ export const LandingPageView = () => {
             }}
             className="hidden-mobile"
           >
-            <a href="#features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }}>Features</a>
+            <a
+              href="#features"
+              onClick={(e) => scrollToSection(e, 'features')}
+              style={{
+                color: activeSection === 'features' ? '#2563eb' : 'inherit',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                fontWeight: activeSection === 'features' ? 800 : 600,
+                borderBottom: activeSection === 'features' ? '2px solid #2563eb' : '2px solid transparent',
+                paddingBottom: '2px'
+              }}
+            >
+              Features
+            </a>
 
             <div style={{ position: 'relative' }}>
               <button
@@ -181,12 +265,15 @@ export const LandingPageView = () => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'inherit',
+                  color: activeSection === 'solutions' ? '#2563eb' : 'inherit',
                   font: 'inherit',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem'
+                  gap: '0.35rem',
+                  fontWeight: activeSection === 'solutions' ? 800 : 600,
+                  borderBottom: activeSection === 'solutions' ? '2px solid #2563eb' : '2px solid transparent',
+                  paddingBottom: '2px'
                 }}
               >
                 Solutions <ChevronDown size={14} />
@@ -207,17 +294,84 @@ export const LandingPageView = () => {
                     zIndex: 110
                   }}
                 >
-                  <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} onClick={() => setSolutionsOpen(false)}>For Enterprise HR Teams</div>
-                  <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} onClick={() => setSolutionsOpen(false)}>For Small & Medium Businesses</div>
-                  <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} onClick={() => setSolutionsOpen(false)}>For Global & Remote Workforces</div>
+                  <div
+                    style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
+                    onClick={(e) => scrollToSection(e, 'solutions')}
+                  >
+                    For Enterprise HR Teams
+                  </div>
+                  <div
+                    style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
+                    onClick={(e) => scrollToSection(e, 'features')}
+                  >
+                    For Small & Medium Businesses
+                  </div>
+                  <div
+                    style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
+                    onClick={(e) => scrollToSection(e, 'security')}
+                  >
+                    For Global & Remote Workforces
+                  </div>
                 </div>
               )}
             </div>
 
-            <a href="#how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</a>
-            <a href="#security" style={{ color: 'inherit', textDecoration: 'none' }}>Security</a>
-            <a href="#roles" style={{ color: 'inherit', textDecoration: 'none' }}>User Roles</a>
-            <a href="#about" style={{ color: 'inherit', textDecoration: 'none' }}>About</a>
+            <a
+              href="#how-it-works"
+              onClick={(e) => scrollToSection(e, 'how-it-works')}
+              style={{
+                color: activeSection === 'how-it-works' ? '#2563eb' : 'inherit',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                fontWeight: activeSection === 'how-it-works' ? 800 : 600,
+                borderBottom: activeSection === 'how-it-works' ? '2px solid #2563eb' : '2px solid transparent',
+                paddingBottom: '2px'
+              }}
+            >
+              How It Works
+            </a>
+            <a
+              href="#security"
+              onClick={(e) => scrollToSection(e, 'security')}
+              style={{
+                color: activeSection === 'security' ? '#2563eb' : 'inherit',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                fontWeight: activeSection === 'security' ? 800 : 600,
+                borderBottom: activeSection === 'security' ? '2px solid #2563eb' : '2px solid transparent',
+                paddingBottom: '2px'
+              }}
+            >
+              Security
+            </a>
+            <a
+              href="#roles"
+              onClick={(e) => scrollToSection(e, 'roles')}
+              style={{
+                color: activeSection === 'roles' ? '#2563eb' : 'inherit',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                fontWeight: activeSection === 'roles' ? 800 : 600,
+                borderBottom: activeSection === 'roles' ? '2px solid #2563eb' : '2px solid transparent',
+                paddingBottom: '2px'
+              }}
+            >
+              User Roles
+            </a>
+            <a
+              href="#about"
+              onClick={(e) => scrollToSection(e, 'about')}
+              style={{
+                color: activeSection === 'about' ? '#2563eb' : 'inherit',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                fontWeight: activeSection === 'about' ? 800 : 600,
+                borderBottom: activeSection === 'about' ? '2px solid #2563eb' : '2px solid transparent',
+                paddingBottom: '2px'
+              }}
+            >
+              About
+            </a>
           </nav>
 
           {/* RIGHT: CTAs & Theme Switcher */}
@@ -316,11 +470,11 @@ export const LandingPageView = () => {
             }}
             className="animate-fade-in"
           >
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>Features</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>How It Works</a>
-            <a href="#security" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>Security</a>
-            <a href="#roles" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>User Roles</a>
-            <a href="#about" onClick={() => setMobileMenuOpen(false)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>About</a>
+            <a href="#features" onClick={(e) => scrollToSection(e, 'features')} style={{ color: activeSection === 'features' ? '#2563eb' : 'inherit', textDecoration: 'none', fontWeight: 600 }}>Features</a>
+            <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} style={{ color: activeSection === 'how-it-works' ? '#2563eb' : 'inherit', textDecoration: 'none', fontWeight: 600 }}>How It Works</a>
+            <a href="#security" onClick={(e) => scrollToSection(e, 'security')} style={{ color: activeSection === 'security' ? '#2563eb' : 'inherit', textDecoration: 'none', fontWeight: 600 }}>Security</a>
+            <a href="#roles" onClick={(e) => scrollToSection(e, 'roles')} style={{ color: activeSection === 'roles' ? '#2563eb' : 'inherit', textDecoration: 'none', fontWeight: 600 }}>User Roles</a>
+            <a href="#about" onClick={(e) => scrollToSection(e, 'about')} style={{ color: activeSection === 'about' ? '#2563eb' : 'inherit', textDecoration: 'none', fontWeight: 600 }}>About</a>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', background: isDark ? '#0f172a' : '#ffffff', fontWeight: 700, color: isDark ? '#ffffff' : '#0f172a', fontSize: '0.85rem' }}>Log In</button>
               <button onClick={() => { setMobileMenuOpen(false); navigateTo('login'); }} style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Get Started →</button>
@@ -334,7 +488,7 @@ export const LandingPageView = () => {
         style={{
           maxWidth: '1280px',
           margin: '0 auto',
-          padding: '4.5rem 2rem 3rem 2rem',
+          padding: '6.5rem 2rem 3rem 2rem',
           position: 'relative',
           zIndex: 1
         }}
@@ -416,7 +570,8 @@ export const LandingPageView = () => {
               </button>
 
               <a
-                href="#showcase"
+                href="#solutions"
+                onClick={(e) => scrollToSection(e, 'solutions')}
                 style={{
                   padding: '0.9rem 1.85rem',
                   borderRadius: '12px',
@@ -803,8 +958,9 @@ export const LandingPageView = () => {
         </div>
       </section>
 
-      {/* 5. PRODUCT SHOWCASE SECTION */}
-      <section id="showcase" style={{ backgroundColor: isDark ? '#080d1a' : '#f8fafc', padding: '6rem 2rem', borderTop: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0', borderBottom: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0' }}>
+      {/* 5. PRODUCT SHOWCASE & SOLUTIONS SECTION */}
+      <section id="solutions" style={{ backgroundColor: isDark ? '#080d1a' : '#f8fafc', padding: '6rem 2rem', borderTop: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0', borderBottom: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0' }}>
+        <span id="showcase" style={{ position: 'relative', top: '-85px', display: 'block' }} />
         <div style={{ maxWidth: '1280px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ color: '#2563eb', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.825rem' }}>PRODUCT SHOWCASE</div>
           <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: isDark ? '#ffffff' : '#0f172a', letterSpacing: '-0.03em', marginTop: '0.4rem', marginBottom: '2.5rem' }}>
@@ -1276,7 +1432,7 @@ export const LandingPageView = () => {
       </section>
 
       {/* 12. FOOTER */}
-      <footer style={{ backgroundColor: '#070c18', color: '#ffffff', padding: '5rem 2rem 2.5rem 2rem', borderTop: '1px solid #1e293b' }}>
+      <footer id="about" style={{ backgroundColor: '#070c18', color: '#ffffff', padding: '5rem 2rem 2.5rem 2rem', borderTop: '1px solid #1e293b' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.5fr repeat(4, 1fr)', gap: '3rem', paddingBottom: '3.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }} className="footer-grid">
           {/* Brand Column */}
           <div>

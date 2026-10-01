@@ -97,7 +97,7 @@ const MainContent = () => {
         );
       case 'settings':
         return (
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
             <SettingsView />
           </ProtectedRoute>
         );

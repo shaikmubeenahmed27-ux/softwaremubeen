@@ -18,7 +18,8 @@ export const NAV_ITEMS = {
     { id: 'employees', label: 'Team', icon: 'Users', path: '/employees' },
     { id: 'attendance', label: 'Attendance', icon: 'Clock', path: '/attendance' },
     { id: 'leave', label: 'Leave', icon: 'CalendarDays', path: '/leave' },
-    { id: 'reports', label: 'Reports', icon: 'BarChart3', path: '/reports' }
+    { id: 'reports', label: 'Reports', icon: 'BarChart3', path: '/reports' },
+    { id: 'settings', label: 'Settings', icon: 'Settings', path: '/settings' }
   ],
 
   employee: [
@@ -28,7 +29,8 @@ export const NAV_ITEMS = {
     { id: 'leave', label: 'Leave', icon: 'CalendarDays', path: '/leave' },
     { id: 'salary', label: 'Salary', icon: 'DollarSign', path: '/salary' },
     { id: 'payslips', label: 'Payslips', icon: 'FileText', path: '/payslips' },
-    { id: 'reports', label: 'My Reports', icon: 'BarChart3', path: '/reports' }
+    { id: 'reports', label: 'My Reports', icon: 'BarChart3', path: '/reports' },
+    { id: 'settings', label: 'Settings', icon: 'Settings', path: '/settings' }
   ]
 };
 
