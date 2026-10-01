@@ -32,11 +32,11 @@ export const LoginView = () => {
         if (res.autoSignedIn) {
           // Immediately navigated to dashboard by AuthContext
         } else {
-          setSuccessMsg('Account created successfully! If email confirmation is enabled on your domain, please check your inbox, or sign in below.');
+          setSuccessMsg('Account created successfully! You can now sign in below.');
           setAuthMode('signin');
         }
       } else {
-        await login(email, password, selectedRole, selectedDept);
+        await login(email, password);
       }
     } catch (err) {
       setLoginError(err.message || 'Operation failed. Please try again.');
@@ -247,109 +247,112 @@ export const LoginView = () => {
           </div>
         )}
 
-        {/* 1. SELECT ROLE */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '0.5rem' }}>
-            <ShieldCheck size={14} style={{ color: '#3b82f6' }} />
-            {authMode === 'signup' ? 'Select Role to Register As' : 'Select Role to Sign In'}
-          </label>
+        {/* Role & Department selector ONLY when registering a new account */}
+        {authMode === 'signup' && (
+          <>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '0.5rem' }}>
+                <ShieldCheck size={14} style={{ color: '#3b82f6' }} />
+                Select Role to Register As
+              </label>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => handleRoleSelect('admin')}
-              style={{
-                padding: '0.65rem 0.4rem',
-                borderRadius: '10px',
-                border: '1.5px solid',
-                borderColor: selectedRole === 'admin' ? '#8b5cf6' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
-                background: selectedRole === 'admin' ? (isDark ? 'rgba(139, 92, 246, 0.25)' : '#ede9fe') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
-                color: selectedRole === 'admin' ? (isDark ? '#c4b5fd' : '#6d28d9') : (isDark ? '#94a3b8' : '#64748b'),
-                cursor: 'pointer',
-                fontSize: '0.825rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                transition: 'all 0.2s ease',
-                boxShadow: selectedRole === 'admin' ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none'
-              }}
-            >
-              Admin
-            </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('admin')}
+                  style={{
+                    padding: '0.65rem 0.4rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid',
+                    borderColor: selectedRole === 'admin' ? '#8b5cf6' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
+                    background: selectedRole === 'admin' ? (isDark ? 'rgba(139, 92, 246, 0.25)' : '#ede9fe') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
+                    color: selectedRole === 'admin' ? (isDark ? '#c4b5fd' : '#6d28d9') : (isDark ? '#94a3b8' : '#64748b'),
+                    cursor: 'pointer',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedRole === 'admin' ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none'
+                  }}
+                >
+                  Admin
+                </button>
 
-            <button
-              type="button"
-              onClick={() => handleRoleSelect('manager')}
-              style={{
-                padding: '0.65rem 0.4rem',
-                borderRadius: '10px',
-                border: '1.5px solid',
-                borderColor: selectedRole === 'manager' ? '#3b82f6' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
-                background: selectedRole === 'manager' ? (isDark ? 'rgba(59, 130, 246, 0.25)' : '#dbeafe') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
-                color: selectedRole === 'manager' ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#64748b'),
-                cursor: 'pointer',
-                fontSize: '0.825rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                transition: 'all 0.2s ease',
-                boxShadow: selectedRole === 'manager' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
-              }}
-            >
-              Manager
-            </button>
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('manager')}
+                  style={{
+                    padding: '0.65rem 0.4rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid',
+                    borderColor: selectedRole === 'manager' ? '#3b82f6' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
+                    background: selectedRole === 'manager' ? (isDark ? 'rgba(59, 130, 246, 0.25)' : '#dbeafe') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
+                    color: selectedRole === 'manager' ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#64748b'),
+                    cursor: 'pointer',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedRole === 'manager' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
+                  }}
+                >
+                  Manager
+                </button>
 
-            <button
-              type="button"
-              onClick={() => handleRoleSelect('employee')}  
-              style={{
-                padding: '0.65rem 0.4rem',
-                borderRadius: '10px',
-                border: '1.5px solid',
-                borderColor: selectedRole === 'employee' ? '#10b981' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
-                background: selectedRole === 'employee' ? (isDark ? 'rgba(16, 185, 129, 0.25)' : '#d1fae5') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
-                color: selectedRole === 'employee' ? (isDark ? '#6ee7b7' : '#047857') : (isDark ? '#94a3b8' : '#64748b'),
-                cursor: 'pointer',
-                fontSize: '0.825rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                transition: 'all 0.2s ease',
-                boxShadow: selectedRole === 'employee' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
-              }}
-            >
-              Employee
-            </button>
-          </div>
-        </div>
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('employee')}  
+                  style={{
+                    padding: '0.65rem 0.4rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid',
+                    borderColor: selectedRole === 'employee' ? '#10b981' : (isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'),
+                    background: selectedRole === 'employee' ? (isDark ? 'rgba(16, 185, 129, 0.25)' : '#d1fae5') : (isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'),
+                    color: selectedRole === 'employee' ? (isDark ? '#6ee7b7' : '#047857') : (isDark ? '#94a3b8' : '#64748b'),
+                    cursor: 'pointer',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedRole === 'employee' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
+                  }}
+                >
+                  Employee
+                </button>
+              </div>
+            </div>
 
-        {/* Department selector if Manager or Employee */}
-        {(selectedRole === 'manager' || selectedRole === 'employee') && (
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b', marginBottom: '0.35rem' }}>
-              <Building2 size={13} style={{ color: 'var(--primary-400)' }} />
-              {selectedRole === 'manager' ? 'Select Department Managed' : 'Assigned Department'}
-            </label>
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.55rem 0.875rem',
-                borderRadius: '10px',
-                background: isDark ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #cbd5e1',
-                color: isDark ? '#ffffff' : '#0f172a',
-                fontSize: '0.85rem',
-                outline: 'none',
-                fontWeight: 600
-              }}
-            >
-              <option value="Engineering & Tech">Engineering & Tech</option>
-              <option value="Human Resources">Human Resources (HR)</option>
-              <option value="Finance & Accounting">Finance & Accounting</option>
-              <option value="Sales & Marketing">Sales & Marketing</option>
-              <option value="Product & Design">Product & Design</option>
-              <option value="Executive">Executive</option>
-            </select>
-          </div>
+            {(selectedRole === 'manager' || selectedRole === 'employee') && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b', marginBottom: '0.35rem' }}>
+                  <Building2 size={13} style={{ color: 'var(--primary-400)' }} />
+                  {selectedRole === 'manager' ? 'Select Department Managed' : 'Assigned Department'}
+                </label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 0.875rem',
+                    borderRadius: '10px',
+                    background: isDark ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #cbd5e1',
+                    color: isDark ? '#ffffff' : '#0f172a',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="Engineering & Tech">Engineering & Tech</option>
+                  <option value="Human Resources">Human Resources (HR)</option>
+                  <option value="Finance & Accounting">Finance & Accounting</option>
+                  <option value="Sales & Marketing">Sales & Marketing</option>
+                  <option value="Product & Design">Product & Design</option>
+                  <option value="Executive">Executive</option>
+                </select>
+              </div>
+            )}
+          </>
         )}
 
         {/* 2. FORM */}
@@ -497,11 +500,13 @@ export const LoginView = () => {
               padding: '0.8rem',
               marginTop: '0.5rem',
               borderRadius: '12px',
-              background: selectedRole === 'admin'
-                ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
-                : selectedRole === 'manager'
-                ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
-                : 'linear-gradient(135deg, #10b981, #059669)',
+              background: authMode === 'signup'
+                ? (selectedRole === 'admin'
+                    ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)'
+                    : selectedRole === 'manager'
+                    ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+                    : 'linear-gradient(135deg, #10b981, #059669)')
+                : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
               fontWeight: 700,
               fontSize: '0.95rem',
               display: 'flex',
@@ -516,7 +521,7 @@ export const LoginView = () => {
           >
             {isSubmitting
               ? (authMode === 'signup' ? 'Creating Account...' : 'Signing In...')
-              : (authMode === 'signup' ? `Register & Sign In as ${getRoleTitle(selectedRole)}` : `Sign In as ${getRoleTitle(selectedRole)}`)}
+              : (authMode === 'signup' ? `Register & Sign In as ${getRoleTitle(selectedRole)}` : 'Sign In')}
             {!isSubmitting && <ArrowRight size={18} />}
           </button>
         </form>

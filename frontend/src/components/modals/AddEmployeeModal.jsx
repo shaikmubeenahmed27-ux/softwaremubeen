@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Mail, Building2, Briefcase, Calendar, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { X, UserPlus, Mail, Building2, Briefcase, Calendar, CheckCircle2, AlertCircle, Eye, EyeOff, Copy, Check, Key } from 'lucide-react';
+import { createEmployee } from '../../services/employeeService';
 
 const DEPARTMENTS = [
   'Engineering & Tech',
@@ -35,6 +35,8 @@ export const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
@@ -56,125 +58,55 @@ export const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Generate employee code
-      const { count } = await supabase
-        .from('employees')
-        .select('*', { count: 'exact', head: true });
-      const empCode = `EMP-${String((count || 0) + 101).padStart(3, '0')}`;
+      const res = await createEmployee({
+        firstName,
+        lastName,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        department: formData.department,
+        designation: formData.designation,
+        joiningDate: formData.joiningDate,
+        employmentType: formData.employmentType
+      });
 
-      // Step 1: Get or create department record
-      let deptId = null;
-      const { data: deptData } = await supabase
-        .from('departments')
-        .select('id')
-        .ilike('name', `%${formData.department.split('&')[0].trim()}%`)
-        .single();
-
-      if (deptData?.id) {
-        deptId = deptData.id;
-      } else {
-        // Create department if it doesn't exist
-        const deptCode = formData.department.replace(/[^A-Z]/gi, '').toUpperCase().slice(0, 5);
-        const { data: newDept } = await supabase
-          .from('departments')
-          .insert({ name: formData.department, code: deptCode })
-          .select('id')
-          .single();
-        deptId = newDept?.id;
-      }
-
-      // Step 2: Get or create designation record
-      let desigId = null;
-      if (deptId) {
-        const { data: desigData } = await supabase
-          .from('designations')
-          .select('id')
-          .ilike('title', `%${formData.designation}%`)
-          .eq('department_id', deptId)
-          .single();
-
-        if (desigData?.id) {
-          desigId = desigData.id;
-        } else {
-          const { data: newDesig } = await supabase
-            .from('designations')
-            .insert({
-              title: formData.designation,
-              department_id: deptId,
-              seniority_band: 'Mid'
-            })
-            .select('id')
-            .single();
-          desigId = newDesig?.id;
-        }
-      }
-
-      // Step 3: Create a profile entry for the new employee
-      // We'll use a placeholder UUID linked to email
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', formData.email)
-        .single();
-
-      let profileId = existingProfile?.id || null;
-
-      // Step 4: Insert into employees table
-      const { data: empData, error: empError } = await supabase
-        .from('employees')
-        .insert({
-          employee_code: empCode,
-          profile_id: profileId,
-          first_name: firstName,
-          last_name: lastName,
-          email: formData.email,
-          phone: formData.phone || '',
-          department_id: deptId,
-          designation_id: desigId,
-          joining_date: formData.joiningDate,
-          employment_type: formData.employmentType,
-          status: 'active'
-        })
-        .select()
-        .single();
-
-      if (empError) {
-        // If profile_id unique constraint fails, try without profile_id
-        if (empError.code === '23505') {
-          const { error: retryError } = await supabase
-            .from('employees')
-            .insert({
-              employee_code: empCode,
-              profile_id: null,
-              first_name: firstName,
-              last_name: lastName,
-              email: formData.email,
-              phone: formData.phone || '',
-              department_id: deptId,
-              designation_id: desigId,
-              joining_date: formData.joiningDate,
-              employment_type: formData.employmentType,
-              status: 'active'
-            });
-          if (retryError) throw retryError;
-        } else {
-          throw empError;
-        }
-      }
-
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
+      if (res?.credentials) {
+        setCreatedCredentials(res.credentials);
+        setSuccess(true);
         onSuccess && onSuccess();
-        onClose();
-      }, 1500);
-
+      } else {
+        throw new Error('Could not create employee account.');
+      }
     } catch (err) {
       console.error('Employee add error:', err);
       setError(err.message || 'Failed to add employee. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdCredentials) return;
+    const text = `PayFlow HR Employee Login Credentials\n-----------------------------------\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nRole: Employee\nDepartment: ${createdCredentials.department}\nLogin URL: http://localhost:5173`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleDone = () => {
+    setSuccess(false);
+    setCreatedCredentials(null);
+    setFormData({
+      fullName: '',
+      email: '',
+      password: '',
+      phone: '',
+      department: 'Engineering & Tech',
+      designation: 'Senior Software Engineer',
+      joiningDate: new Date().toISOString().split('T')[0],
+      employmentType: 'Full-time'
+    });
+    onClose();
   };
 
   const inputStyle = {
@@ -220,20 +152,81 @@ export const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-main)' }}>
             <UserPlus size={20} style={{ color: 'var(--primary-400)' }} /> Onboard New Employee
           </div>
-          <button onClick={onClose} className="btn-icon"><X size={18} /></button>
+          <button onClick={handleDone} className="btn-icon"><X size={18} /></button>
         </div>
 
-        {success ? (
-          <div style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>
-            <CheckCircle2 size={52} style={{ margin: '0 auto 1.25rem auto', color: '#10b981' }} />
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
-              Employee Onboarded Successfully
+        {success && createdCredentials ? (
+          <div style={{ padding: '1rem 0', textAlign: 'center' }}>
+            <CheckCircle2 size={48} style={{ margin: '0 auto 1rem auto', color: '#10b981' }} />
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '0.35rem' }}>
+              Employee Onboarded & Auth Account Created!
             </h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              <strong style={{ color: 'var(--text-main)' }}>{formData.fullName}</strong> has been added to <strong style={{ color: 'var(--text-main)' }}>{formData.department}</strong>.
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              A valid Supabase Auth account and Employee database profile have been created.
             </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.825rem', color: '#10b981', fontWeight: 600, marginTop: '1rem', padding: '0.35rem 0.85rem', borderRadius: 'var(--radius-full)', background: 'rgba(16, 185, 129, 0.1)' }}>
-              Saved to Supabase employees database
+
+            {/* Generated Credentials Box */}
+            <div style={{
+              background: 'var(--bg-app)',
+              border: '1px solid var(--primary-500)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1.25rem',
+              textAlign: 'left',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--primary-400)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Key size={14} /> Employee Direct Login Credentials
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Email (Login ID):</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{createdCredentials.email}</div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Password:</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <div style={{ fontWeight: 700, color: '#10b981', fontFamily: 'monospace' }}>
+                      {showPassword ? createdCredentials.password : '••••••••'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--text-muted)' }}
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered Role:</div>
+                  <div style={{ fontWeight: 700, color: 'var(--primary-400)' }}>Employee</div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Assigned Department:</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{createdCredentials.department}</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                &bull; Share these exact credentials with the employee so they can sign in directly on the Employee Login page without registering.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={handleCopyCredentials}>
+                {copied ? <Check size={16} style={{ color: '#10b981' }} /> : <Copy size={16} />}
+                {copied ? 'Credentials Copied!' : 'Copy Credentials'}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleDone}>
+                Done & Close
+              </button>
             </div>
           </div>
         ) : (

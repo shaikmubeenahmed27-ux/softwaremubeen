@@ -144,120 +144,75 @@ export const AuthProvider = ({ children }) => {
     return clean;
   };
 
-  // Direct Role-Based Sign In with Department
-  const login = async (email, password, selectedRole = 'admin', customDepartment = '') => {
-    const userEmail = email.trim() || `${selectedRole}@gmail.com`;
-    const displayName = getNameFromEmail(userEmail);
-    let assignedDept = customDepartment || DEFAULT_DEPARTMENTS[selectedRole] || 'Engineering & Tech';
+  // Automatic Role-Based Sign In
+  const login = async (email, password) => {
+    const userEmail = (email || '').trim();
+    if (!userEmail || !password) {
+      throw new Error('Invalid email or password.');
+    }
 
     try {
-      // Step 1: Authenticate with Supabase (validates email + password)
+      // Step 1: Authenticate with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: userEmail,
         password: password
       });
 
       if (authError || !authData?.user) {
-        throw new Error('Incorrect email or password. If you have not created your account yet, please click the "Register / Sign Up" tab above to create it.');
+        throw new Error('Invalid email or password.');
       }
 
       const authUser = authData.user;
 
-      // Step 2: Fetch actual role from profiles table in database
-      const { data: dbProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle();
+      // Step 2: Fetch actual profile and role from database
+      let dbProfile = null;
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .maybeSingle();
+        dbProfile = data;
+      } catch (profileErr) {
+        console.warn('Profile fetch warning:', profileErr);
+      }
 
-      // Check employees table if profile role is not explicitly set
+      // Check employees table if profile role is missing
       let empRole = null;
-      if (!dbProfile?.role) {
-        try {
-          const { data: empRecord } = await supabase
-            .from('employees')
-            .select('*, profiles(role)')
-            .or(`profile_id.eq.${authUser.id},email.eq.${authUser.email}`)
-            .maybeSingle();
-          if (empRecord?.profiles?.role) {
+      let empDept = null;
+      try {
+        const { data: empRecord } = await supabase
+          .from('employees')
+          .select('*, profiles(role), departments(name)')
+          .or(`profile_id.eq.${authUser.id},email.eq.${authUser.email}`)
+          .maybeSingle();
+
+        if (empRecord) {
+          if (empRecord.profiles?.role) {
             empRole = empRecord.profiles.role;
           }
-        } catch (eErr) {}
+          if (empRecord.departments?.name || empRecord.department) {
+            empDept = empRecord.departments?.name || empRecord.department;
+          }
+        }
+      } catch (empQueryErr) {
+        console.warn('Employee query warning:', empQueryErr);
       }
 
       // Determine database-verified role
-      const actualRole = dbProfile?.role || empRole || authUser.user_metadata?.role || selectedRole;
+      const rawRole = dbProfile?.role || empRole || authUser.user_metadata?.role;
+      const actualRole = rawRole ? rawRole.toLowerCase().trim() : null;
 
-      // Step 3: Strict Role Validation against the role selected on the login UI form
-      if (actualRole !== selectedRole) {
-        // Sign out immediately to revoke authenticated session
+      // Step 3: Validate role from database record
+      if (!actualRole || !['admin', 'manager', 'employee'].includes(actualRole)) {
+        // Sign out immediately to revoke session and prevent unauthorized access
         await supabase.auth.signOut();
-
-        if (selectedRole === 'employee') {
-          throw new Error('Invalid Employee credentials. This account is not registered as an Employee.');
-        } else if (selectedRole === 'manager') {
-          throw new Error('Invalid Manager credentials. This account is not registered as a Manager.');
-        } else {
-          throw new Error('Invalid Admin credentials. This account is not registered as an Admin.');
-        }
+        throw new Error('User role not configured. Please contact Admin.');
       }
 
-      // Step 4: Department validation for Employee role
-      if (actualRole === 'employee') {
-        let actualAssignedDept = null;
-
-        // 1. Query Supabase employees table for actual department stored in database
-        try {
-          const { data: empRecord } = await supabase
-            .from('employees')
-            .select('*, departments(id, name)')
-            .or(`profile_id.eq.${authUser.id},email.eq.${authUser.email}`)
-            .maybeSingle();
-
-          if (empRecord) {
-            actualAssignedDept = empRecord.departments?.name || empRecord.department;
-          }
-        } catch (empQueryErr) {
-          console.warn('Error querying employees table for department:', empQueryErr);
-        }
-
-        // 2. Fallback to auth user metadata if not found in employees table
-        if (!actualAssignedDept) {
-          actualAssignedDept = authUser.user_metadata?.department;
-        }
-
-        // 3. Fallback to local employees cache if available
-        if (!actualAssignedDept) {
-          try {
-            const rawCache = localStorage.getItem('payflow_employees_cache_v2');
-            if (rawCache) {
-              const localEmps = JSON.parse(rawCache);
-              const matchedEmp = localEmps.find(
-                (e) => (e.email && e.email.toLowerCase() === authUser.email.toLowerCase()) || e.dbId === authUser.id
-              );
-              if (matchedEmp?.department) {
-                actualAssignedDept = matchedEmp.department;
-              }
-            }
-          } catch (cacheErr) {
-            console.warn('Cache lookup warning:', cacheErr);
-          }
-        }
-
-        // If an actual assigned department exists for this employee, validate against the selected department
-        if (actualAssignedDept) {
-          const normSelected = normalizeDept(customDepartment);
-          const normActual = normalizeDept(actualAssignedDept);
-
-          if (normSelected !== normActual) {
-            // Revoke authenticated session before throwing error to prevent session creation or dashboard redirect
-            await supabase.auth.signOut();
-            throw new Error('Incorrect department selected. Please select your assigned department.');
-          }
-          // Use the employee's actual database-stored department
-          assignedDept = actualAssignedDept;
-        }
-      }
+      // Step 4: Build user object and assign department/designation
+      const assignedDept = empDept || dbProfile?.department || authUser.user_metadata?.department || DEFAULT_DEPARTMENTS[actualRole] || 'Executive';
+      const displayName = dbProfile?.full_name || authUser.user_metadata?.full_name || getNameFromEmail(authUser.email);
 
       const assignedTitle = actualRole === 'manager'
         ? `${assignedDept} Lead Manager`
@@ -265,21 +220,19 @@ export const AuthProvider = ({ children }) => {
         ? 'System Administrator'
         : 'Senior Software Engineer';
 
-      // Build user object
-      const name = dbProfile?.full_name || authUser.user_metadata?.full_name || displayName;
       const userObj = {
         id: authUser.id,
         dbId: authUser.id,
-        name,
+        name: displayName,
         email: authUser.email || userEmail,
         role: actualRole,
         roleLabel: ROLE_LABELS[actualRole] || actualRole,
-        avatar: dbProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`,
+        avatar: dbProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=3b82f6&color=fff`,
         department: assignedDept,
-        designation: assignedTitle
+        designation: authUser.user_metadata?.designation || DEFAULT_DESIGNATIONS[actualRole] || assignedTitle
       };
 
-      // Record sign-in action in audit logs
+      // Record sign-in in audit logs
       try {
         await supabase.from('audit_logs').insert({
           user_id: authUser.id,
@@ -290,6 +243,7 @@ export const AuthProvider = ({ children }) => {
         console.warn('Audit log write warning:', auditErr);
       }
 
+      // Set auth state & redirect automatically based on actual database role
       setCurrentRole(actualRole);
       setCurrentUser(userObj);
       setIsAuthenticated(true);
@@ -301,7 +255,7 @@ export const AuthProvider = ({ children }) => {
         theme
       }));
 
-      return { success: true };
+      return { success: true, role: actualRole };
     } catch (err) {
       throw err;
     }
