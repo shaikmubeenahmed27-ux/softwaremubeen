@@ -34,6 +34,7 @@ export const PayslipsView = () => {
     const list = await getPayslips({
       userRole: currentRole,
       authEmployeeId: currentUser?.id,
+      authUserEmail: currentUser?.email,
       month: monthFilter
     });
     setPayslips(list);
@@ -42,7 +43,7 @@ export const PayslipsView = () => {
 
   useEffect(() => {
     loadData();
-  }, [currentRole, monthFilter]);
+  }, [currentRole, monthFilter, currentUser]);
 
   const filteredSlips = payslips.filter(
     (p) =>
@@ -57,7 +58,7 @@ export const PayslipsView = () => {
       <div className="page-header">
         <div className="page-title-group">
           <h1>
-            <FileText size={24} style={{ color: 'var(--primary-400)' }} /> Payslips Repository
+            <FileText size={24} style={{ color: 'var(--primary-400)' }} /> {currentRole === 'employee' ? 'My Payslips' : 'Payslips Repository'}
           </h1>
           <p>
             {currentRole === 'employee' && 'Employee Self Service: View, download PDF, or print your official monthly payslips.'}
@@ -131,10 +132,12 @@ export const PayslipsView = () => {
             <Inbox size={24} />
           </div>
           <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            No Payslips Generated Yet
+            No payslips available.
           </h3>
           <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Payslips are automatically generated and published when you approve and disburse a payroll cycle on the Payroll page.
+            {currentRole === 'employee'
+              ? 'Your payslips will appear here automatically as soon as HR or Admin processes your monthly payroll.'
+              : 'Payslips are automatically generated and published when you approve and disburse a payroll cycle on the Payroll page.'}
           </p>
           {currentRole === 'admin' && (
             <button className="btn btn-primary" onClick={() => navigateTo('payroll')} style={{ margin: '0 auto' }}>

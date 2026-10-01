@@ -315,5 +315,26 @@ export async function processPayrollBatch(batchId) {
 
   saveLocalGeneratedPayslips([...newSlips, ...existingSlips]);
 
+  // Attempt database sync to Supabase payslips table if connected
+  try {
+    for (const slip of newSlips) {
+      const { data: dbEmp } = await supabase
+        .from('employees')
+        .select('id')
+        .or(`employee_code.eq.${slip.empId},id.eq.${slip.empId}`)
+        .maybeSingle();
+
+      if (dbEmp?.id) {
+        await supabase.from('payslips').insert({
+          employee_id: dbEmp.id,
+          payslip_number: slip.id,
+          issue_date: slip.paymentDate
+        });
+      }
+    }
+  } catch (dbErr) {
+    console.warn('Supabase payslips DB insert warning:', dbErr);
+  }
+
   return { success: true, payslips: newSlips };
 }
